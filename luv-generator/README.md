@@ -1,4 +1,4 @@
-# LUV-Generator BvB / BvB Reha – Version 0.1
+# LUV-Generator BvB / BvB Reha – Version 0.2
 
 > **TESTSYSTEM – Keine echten personenbezogenen Daten eingeben.**
 > Dieses System verwendet ausschließlich fiktive Testdaten. Es ist kein
@@ -24,8 +24,9 @@ Bildungsmaßnahmen (BvB / BvB Reha).
 9. [Tests ausführen](#tests-ausführen)
 10. [Projektstruktur](#projektstruktur)
 11. [Implementierte Sicherheits-/Datenschutzregeln](#implementierte-sicherheits--datenschutzregeln)
-12. [Bekannte offene Punkte](#bekannte-offene-punkte)
-13. [Vorschläge für Version 0.2](#vorschläge-für-version-02)
+12. [Version 0.1 → 0.2 – Änderungsübersicht](#version-01--02--änderungsübersicht)
+13. [Bekannte offene Punkte](#bekannte-offene-punkte)
+14. [Vorschläge für Version 0.3](#vorschläge-für-version-03)
 
 ---
 
@@ -180,6 +181,25 @@ alle zehn in der Spezifikation geforderten Testfälle (Abschnitt 38):
 Zusätzlich: `domainRules.test.ts` für Förderlogik, Evidence-ID-Vergabe und
 Evidenzprüfung.
 
+Seit Version 0.2 zusätzlich `v02.test.ts` mit den in PH-15 (Abschnitt 59)
+geforderten Testfällen:
+
+| Test | Inhalt |
+|---|---|
+| V02-T01 | Unterkompetenz aus Kompetenzkatalog auswählen – kein manuelles Neueintippen nötig |
+| V02-T02 | Eigene Unterkompetenz hinzufügen funktioniert weiterhin (ohne Katalogeintrag) |
+| V02-T03 | „Mara ist faul.“ → Konkretisierungsassistent (Rückfragen statt Umformulierung) |
+| V02-T04 | Aussage geht über die Beleglage hinaus → nicht/teilweise gedeckt |
+| V02-T05 | KI-Satz mit erfundener Evidence-ID wird technisch blockiert |
+| V02-T06 | Fehlende methodische Kompetenz → Qualitätswarnung, keine automatische Bewertung |
+| V02-T07 | Keine Stärke vorhanden → Hinweis, keine erfundene Ressource |
+| V02-T08 | Acht bestätigte Förderziele → Priorisierungswarnung |
+| V02-T09 | Maßnahme aus Bibliothek nur als Vorschlagssprache, nie als bereits durchgeführt |
+| V02-T10 | Rote unbelegte Aussage blockiert die Freigabe; manuelle Bearbeitung hebt die Blockade auf |
+
+Alle 19 Testfälle aus Version 0.1 bleiben unverändert Teil der Suite
+(Regressionsschutz) – insgesamt 29 Tests, alle grün.
+
 Frontend-Build/Typecheck:
 
 ```bash
@@ -194,15 +214,16 @@ luv-generator/
 ├── README.md
 ├── backend/
 │   ├── src/
-│   │   ├── domain/            # Neutrales Datenmodell, deterministische Fachlogik
+│   │   ├── domain/            # Neutrales Datenmodell, deterministische Fachlogik, Kompetenzkatalog,
+│   │   │                      # Maßnahmenbibliothek, Konkretisierungsassistent, Qualitäts-/Freigabecheck
 │   │   ├── privacy/           # Privacy Gateway (Allowlist, Identifikatoren, Sensitive-Scan)
-│   │   ├── ai/                # Prompt Builder, Prompt-Templates (versioniert), Claude-Client, Testmodus-Mock
-│   │   ├── validation/        # Schema-, Evidenz-, Faktenabdeckungsprüfung, Request-Validierung
+│   │   ├── ai/                # Prompt Builder, Prompt-Templates (versioniert, u. a. fact_check v2, measures v2), Claude-Client, Testmodus-Mock
+│   │   ├── validation/        # Schema-, Evidenz-, Faktenabdeckungsprüfung (heuristisch + semantisch), Request-Validierung
 │   │   ├── luv_composer/      # Abschnittsauswahl/-reihenfolge, Redundanzprüfung, Gesamtredaktion, manueller Schutz
 │   │   ├── export/            # DOCX-Export, Kopiertext
-│   │   ├── demo/              # 3 fiktive Demo-Fälle (Start/Verlauf/Abschluss)
-│   │   ├── web/                # Express-App, Routen, Session-Speicher, Logging
-│   │   └── __tests__/         # Vitest-Suite (u. a. Testfälle 1-10 der Spezifikation)
+│   │   ├── demo/              # 5 fiktive Demo-Fälle A-E (Start ×3, Verlauf, Abschluss)
+│   │   ├── web/                # Express-App, Routen (inkl. Katalog-/Qualitäts-/Freigabecheck-Routen), Session-Speicher, Logging
+│   │   └── __tests__/         # Vitest-Suite (Testfälle 1-10 + V02-T01..T10)
 │   ├── package.json / tsconfig.json / vitest.config.ts / .env.example
 └── frontend/
     ├── src/
@@ -233,8 +254,23 @@ luv-generator/
   ungültige Antworten werden verworfen („Antwort konnte nicht sicher
   verarbeitet werden.“), keine unsicheren Teiltexte übernommen.
 - **Faktenvalidierung**: Existenzprüfung referenzierter Evidence-IDs
-  (`evidenceValidation.ts`) sowie ein Faktenabdeckungscheck
-  (`covered` / `partially_covered` / `unsupported`).
+  (`evidenceValidation.ts`) sowie ein Faktenabdeckungscheck mit vier Status
+  (`covered` / `partially_covered` / `unsupported` / `needs_review`).
+  Seit Version 0.2 primär als **semantische, aussagebasierte Prüfung**
+  (`validation/semanticFactCheck.ts`, PH-15 §12-17): der Text wird in
+  einzelne Claims zerlegt und jede Aussage einzeln gegen die Belege geprüft;
+  erfundene Evidence-IDs werden unabhängig vom Claude-Ergebnis technisch
+  entfernt. Die alte Wortüberlappungs-Heuristik dient nur noch als Fallback,
+  falls die KI nicht verfügbar ist.
+- **Freigabecheck mit technischer Durchsetzung** (`domain/releaseCheck.ts`,
+  Version 0.2, PH-15 §43): Abschnitte mit Status `unsupported`/`needs_review`,
+  die noch nicht manuell bearbeitet wurden, blockieren `POST /approve`
+  serverseitig (409), nicht nur als UI-Warnung. Eine manuelle Bearbeitung
+  gilt als aktive fachliche Prüfung und hebt die Blockade auf.
+- **Konkretisierungsassistent** (`domain/clarificationAssistant.ts`, Version
+  0.2, PH-15 §23-26): erkennt pauschale/wertende Begriffe rein deterministisch
+  im Code (nicht nur reaktiv im KI-Prompt) und fordert konkrete Rückfragen,
+  ohne die Antworten zu interpretieren.
 - **Deterministische Förderlogik**: Bewertungen lösen lediglich Kandidaten
   aus (`domain/supportLogic.ts`); Förderziele erfordern zwingend eine aktive
   Bestätigung (`status = "confirmed"`) durch die Koordination – serverseitig
@@ -262,14 +298,74 @@ luv-generator/
 - **Interne 0–4-Bewertungsskala** ausschließlich technisch für die
   Förderlogik verwendet, erscheint nie im fertigen LUV-Text.
 
+## Version 0.1 → 0.2 – Änderungsübersicht
+
+Version 0.2 setzt den Anforderungskatalog **PH-15** auf Basis des
+**Master-Arbeitsstands V1.0** um – gezielt erweitert, nicht neu gebaut. Alle
+Sicherheits-, Datenschutz- und Freigabemechanismen aus Version 0.1 bleiben
+unverändert bestehen (siehe [Implementierte Sicherheits-/Datenschutzregeln](#implementierte-sicherheits--datenschutzregeln)).
+
+**Neu implementierte Funktionen** (in der von PH-15 vorgegebenen Reihenfolge):
+
+1. **Kompetenzkatalog** (`domain/competenceCatalog.ts`) – vordefinierte
+   Unterkompetenzen je Hauptbereich zur Schnellauswahl; „+ eigene
+   Unterkompetenz hinzufügen“ bleibt möglich. Neues Feld `relevantForLuv`
+   („Für aktuellen LUV relevant? Ja/Nein“) – nicht relevante Einträge lösen
+   keinen Förderbereich aus und verlängern den LUV-Text nicht automatisch.
+2. **Qualitäts- und Vollständigkeitscheck** (`domain/qualityCheck.ts`,
+   `GET /:id/quality-check`) – Übersicht vor der Erstellung, je LUV-Art
+   unterschiedlich; warnt, blockiert aber nichts und ergänzt nie automatisch.
+3. **Konkretisierungsassistent** (`domain/clarificationAssistant.ts`) –
+   deterministische Erkennung pauschaler Begriffe mit konkreten Hilfsfragen.
+4. **Evidenzmodell V2** – vier Evidenzstatus (`covered` / `partially_covered`
+   / `unsupported` / `needs_review`), Claim/Evidence-Trennung
+   (`domain/types.ts: FactClaim`).
+5. **Semantische Faktenprüfung** (`validation/semanticFactCheck.ts`,
+   `ai/prompts/factCheck.v2.ts`) – aussagebasierte Prüfung durch Claude statt
+   nur Wortüberlappung; diese bleibt als technischer Fallback erhalten.
+6. **Funktion „Grundlage anzeigen“** – pro Abschnitt einblendbar (Beobachtung,
+   Quelle, Evidence-ID, Bewertung), Vorschau bleibt standardmäßig aufgeräumt.
+7. **Förderbedarfstransparenz** – „Warum wurde dieser Bereich vorgeschlagen?“
+   je Förderbereich einsehbar.
+8. **Förderzielpriorisierung** – A/B/C-Skala (`GoalPriority`) statt
+   hoch/mittel/niedrig, Warnung bei vielen parallelen Zielen (Schwellenwert
+   als technischer Arbeitswert, keine starre Obergrenze). **Bugfix:** in
+   Version 0.1 erschien die Priorität fälschlich im gerenderten LUV-Text
+   (`luv_composer/renderGoals.ts`) – PH-15 §34 verbietet das ausdrücklich;
+   in Version 0.2 korrigiert. Neu zusätzlich: Zielstatus
+   (`GoalCompletionStatus`) für Verlaufs-/Abschluss-LUV, von Claude
+   vorschlagbar, aber nie verbindlich gesetzt.
+9. **Maßnahmenbibliothek** (`domain/measureLibrary.ts`,
+   `GET /:id/../catalog/measures`) – Konfigurationsdatei mit Beispiel­
+   maßnahmen je Bereich; `SupportGoal.measureSource` unterscheidet
+   Bibliothek/KI-Vorschlag/manuell. Die Maßnahmen-KI-Prompts (`measures.v2.ts`)
+   verlangen jetzt ausdrücklich Vorschlagssprache.
+10. **Vorschau- und Freigabecheck** (`domain/releaseCheck.ts`) – MUSS-Regel
+    aus PH-15 §43: rote (`unsupported`/`needs_review`) Abschnitte, die noch
+    nicht manuell bearbeitet wurden, blockieren `POST /approve` serverseitig
+    (409 `release_check_blocked`), nicht nur als Anzeige.
+11. **Tests**: 10 neue Testfälle V02-T01–T10 plus vollständige
+    Regressionssuite aus Version 0.1 (insgesamt 29 Tests).
+
+Zusätzlich wurden die **Demo-Fälle** von A–C (Start/Verlauf/Abschluss) auf
+**A–E** erweitert (PH-15 §58): Demo A (ausgewogen), Demo B (sehr wenige
+Daten – zeigt den Qualitätscheck), Demo C (pauschale Formulierungen – zeigt
+den Konkretisierungsassistenten), Demo D (Verlauf), Demo E (Abschluss mit
+Zielstatus).
+
+Version 0.2 wurde sowohl in der Vollversion (dieses Verzeichnis) als auch in
+der separat ausgelieferten Einzeldatei-Artifact-Version umgesetzt.
+
 ## Bekannte offene Punkte
 
 Alle mit `TODO: fachlich abgleichen` im Code markierten Stellen sind bewusst
 konservativ/vereinfacht gelöst und sollten vor produktivem Einsatz fachlich
 abgestimmt werden. Insbesondere:
 
-- **Faktenabdeckungscheck** (`validation/evidenceValidation.ts`) ist eine
-  einfache Wortüberlappungs-Heuristik, keine echte NLP-Analyse.
+- **Faktenabdeckungscheck (heuristischer Fallback)**
+  (`validation/evidenceValidation.ts`) ist weiterhin eine einfache
+  Wortüberlappungs-Heuristik; sie kommt nur noch zum Einsatz, wenn die
+  semantische Prüfung nicht verfügbar ist.
 - **Sensitive-Content-Erkennung** (`privacy/sensitiveDetection.ts`) ist eine
   Keyword-Liste; sie ist bewusst konservativ (lieber zu viele False
   Positives als ein Datenschutzverstoß), sollte aber fachlich/juristisch
@@ -277,36 +373,53 @@ abgestimmt werden. Insbesondere:
 - **Satzsegmentierung des vorherigen LUV-Texts** (`web/routes/cases.ts`,
   `POST /previous-luv`) ist eine einfache Regex-basierte Aufteilung ohne
   inhaltliche Vorauswahl.
-- **Maßnahmen** werden aktuell als Teil des Förderziel-Objekts behandelt
-  (gemeinsamer Bestätigungsstatus); ein vollständig eigenständiger
-  Bestätigungs-Workflow für Maßnahmen (analog zu Förderzielen) ist in
-  Version 0.1 nicht umgesetzt.
+- **Maßnahmen** werden weiterhin primär als Teil des Förderziel-Objekts
+  behandelt (`SupportGoal.massnahme`/`measureSource`); ein vollständig
+  eigenständiger Bestätigungs-Workflow je Maßnahme (mit eigenem Status,
+  analog zu Förderzielen – PH-15 §21 "Dasselbe Prinzip gilt für Maßnahmen")
+  ist auch in Version 0.2 nicht umgesetzt (siehe Kommentar in
+  `web/routes/ai.ts` vor der `/measures/suggest`-Route).
+- **Kompetenzkatalog, Maßnahmenbibliothek und kritische-Begriffe-Liste** sind
+  ausdrücklich unverbindliche Arbeitsvorschläge aus PH-15, keine
+  offizielle/vertraglich hinterlegte Liste (mehrfach als
+  `TODO: fachlich abgleichen` markiert).
+- **Förderzielanzahl-Schwellenwert** (5, `GOAL_COUNT_WARNING_THRESHOLD`) ist
+  ein technischer Arbeitswert, keine fachlich vorgegebene Obergrenze
+  (PH-15 §35 verbietet ausdrücklich eine starre Obergrenze).
 - **Gesamtredaktion**: die Zuordnung des von Claude zurückgegebenen
   Gesamttexts zu einzelnen Abschnitten erfolgt über Abschnittstitel als
   Trennmarker; bei stark abweichender Formatierung durch Claude kann die
-  Zuordnung fehlschlagen (in diesem Fall bleibt der Originaltext erhalten,
-  siehe Faktenabdeckungs-Rückfallprüfung in `luv_composer/overallRedaction.ts`).
+  Zuordnung fehlschlagen (in diesem Fall bleibt der Originaltext erhalten).
+- **Freigabecheck deckt keine dauerhaft gespeicherten Konflikte ab**: KI-
+  Antworten vom Typ `conflict` werden nur transient an die Oberfläche
+  zurückgegeben, nicht persistent je Abschnitt gespeichert – der
+  Freigabecheck kann daher aktuell nur zuletzt sichtbare Warnungen und den
+  Faktenstatus auswerten, keine historischen Konflikte (siehe Kommentar in
+  `domain/releaseCheck.ts`).
 - **Session-Speicherung** ist rein in-memory (Abschnitt 34); bei Neustart des
   Backends gehen alle Fälle verloren (in einem TESTSYSTEM gewollt).
 
-## Vorschläge für Version 0.2
+## Vorschläge für Version 0.3
 
-*(Getrennt vom aktuellen Code, nicht automatisch umgesetzt.)*
+*(Getrennt vom aktuellen Code, nicht automatisch umgesetzt – Version 0.2
+erweitert sich nicht eigenständig über PH-15 hinaus.)*
 
-- Eigenständiger Bestätigungs-Workflow für Maßnahmen (analog Förderzielen),
-  inkl. eigenem Status pro Maßnahme.
+- Eigenständiger Bestätigungs-Workflow für Maßnahmen mit eigenem Status pro
+  Maßnahme (statt Teil des Förderziel-Objekts).
 - Datei-Upload für vorherige LUV-Dokumente (PDF/DOCX) statt Copy-Paste, inkl.
   serverseitiger Textextraktion (weiterhin als nicht vertrauenswürdige Daten
   behandelt, keine Systemanweisungen).
-- Präzisere, ggf. embedding-basierte Faktenabdeckungs- und
-  Redundanzprüfung anstelle der Wortüberlappungs-Heuristik.
+- Persistente Speicherung von KI-`conflict`-Antworten je Abschnitt, damit der
+  Freigabecheck auch historische, ungelöste Widersprüche erfassen kann.
 - Persistente, verschlüsselte Speicherung (bei echtem, nicht-fiktivem
   Einsatz) mit klarer Datenschutzfreigabe, Rollen-/Rechtekonzept und
   Protokollierung von Zugriffen.
+- Konfigurierbare Kompetenzkatalog-/Maßnahmenbibliothek-/Sensitive-Content-
+  Listen (statt Code-Konstanten), pflegbar durch Fachverantwortliche bzw.
+  Datenschutzbeauftragte, sobald offizielle Leistungsbeschreibung und
+  LUV-Vordruck vorliegen.
 - Mehrsprachige Oberfläche / Formulierungshilfen für unterschiedliche
   Zielgruppen.
 - Feingranulareres Prompt-Versionierungs- und A/B-Test-Konzept inkl.
   Änderungsprotokoll pro Prompt-Version.
-- Konfigurierbare Sensitive-Content-Liste (statt Code-Konstante), gepflegt
-  durch Datenschutzbeauftragte.
 - Barrierefreiheits-Audit (WCAG) der Wizard-Oberfläche.
