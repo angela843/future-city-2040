@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { api } from "../../api/client.js";
-import { CaseRecord, StartingSituation } from "../../types.js";
+import {
+  BERUFLICHE_VORERFAHRUNG_LABELS,
+  BERUFLICHE_VORERFAHRUNG_OPTIONS,
+  BeruflicheVorerfahrung,
+  CaseRecord,
+  SCHULABSCHLUSS_LABELS,
+  SCHULABSCHLUSS_OPTIONS,
+  Schulabschluss,
+  StartingSituation
+} from "../../types.js";
 
 export function Step2StartingSituation({
   record,
@@ -16,8 +25,17 @@ export function Step2StartingSituation({
   const [form, setForm] = useState<StartingSituation>(record.startingSituation);
   const [saving, setSaving] = useState(false);
 
-  function set<K extends keyof StartingSituation>(key: K, value: string) {
+  function setText<K extends "bisherigePraktika" | "ausgangssituation">(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleVorerfahrung(value: BeruflicheVorerfahrung) {
+    setForm((f) => ({
+      ...f,
+      beruflicheVorerfahrung: f.beruflicheVorerfahrung.includes(value)
+        ? f.beruflicheVorerfahrung.filter((v) => v !== value)
+        : [...f.beruflicheVorerfahrung, value]
+    }));
   }
 
   async function save(andNext: boolean) {
@@ -35,20 +53,37 @@ export function Step2StartingSituation({
     <div className="card">
       <h2>Schritt 2 – Ausgangslage</h2>
       <div className="field">
-        <label>Schulabschluss</label>
-        <input value={form.schulabschluss} onChange={(e) => set("schulabschluss", e.target.value)} />
+        <label htmlFor="schulabschluss">Schulabschluss</label>
+        <select
+          id="schulabschluss"
+          value={form.schulabschluss}
+          onChange={(e) => setForm((f) => ({ ...f, schulabschluss: e.target.value as Schulabschluss }))}
+        >
+          {SCHULABSCHLUSS_OPTIONS.map((o) => (
+            <option key={o} value={o}>
+              {SCHULABSCHLUSS_LABELS[o]}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="field">
-        <label>Berufliche Vorerfahrung</label>
-        <textarea value={form.beruflicheVorerfahrung} onChange={(e) => set("beruflicheVorerfahrung", e.target.value)} />
+        <label>Berufliche Vorerfahrung (Mehrfachauswahl)</label>
+        <div className="checkbox-group">
+          {BERUFLICHE_VORERFAHRUNG_OPTIONS.map((o) => (
+            <label key={o} className="checkbox-label">
+              <input type="checkbox" checked={form.beruflicheVorerfahrung.includes(o)} onChange={() => toggleVorerfahrung(o)} />
+              {BERUFLICHE_VORERFAHRUNG_LABELS[o]}
+            </label>
+          ))}
+        </div>
       </div>
       <div className="field">
         <label>Bisherige Praktika</label>
-        <textarea value={form.bisherigePraktika} onChange={(e) => set("bisherigePraktika", e.target.value)} />
+        <textarea value={form.bisherigePraktika} onChange={(e) => setText("bisherigePraktika", e.target.value)} />
       </div>
       <div className="field">
         <label>Kurze Ausgangssituation</label>
-        <textarea value={form.ausgangssituation} onChange={(e) => set("ausgangssituation", e.target.value)} />
+        <textarea value={form.ausgangssituation} onChange={(e) => setText("ausgangssituation", e.target.value)} />
       </div>
       <div className="button-row">
         <button type="button" onClick={onBack}>

@@ -11,13 +11,15 @@ import {
   ComparisonClaimConfirmSchema,
   ComparisonClaimLinkSchema,
   EvidenceItemInputSchema,
+  FoerderzielbereichTrackingUpdateSchema,
   FurtherFindingsSchema,
   PreviousLuvSchema,
   SectionManualEditSchema,
   StartingSituationSchema,
   SubCompetenceInputSchema,
   SupportAreaStatusUpdateSchema,
-  SupportGoalUpdateSchema
+  SupportGoalUpdateSchema,
+  TeilnehmerbesprechungSchema
 } from "../../validation/requestSchemas.js";
 import { evidencePrefix, nextEvidenceId } from "../../domain/evidence.js";
 import { deriveSupportAreaCandidates } from "../../domain/supportLogic.js";
@@ -28,6 +30,7 @@ import { renderSupportGoalsSectionText } from "../../luv_composer/renderGoals.js
 import { runQualityCheck } from "../../domain/qualityCheck.js";
 import { runReleaseCheck } from "../../domain/releaseCheck.js";
 import { checkForClarification } from "../../domain/clarificationAssistant.js";
+import { checkKompetenzanalyseDauer, computeFristen } from "../../domain/fristenLogic.js";
 
 export const casesRouter = Router();
 
@@ -36,17 +39,40 @@ casesRouter.post(
   asyncHandler(async (req, res) => {
     const baseData = BaseDataSchema.parse(req.body);
     const record = createCase({
-      baseData: { ...baseData, geburtsdatum: baseData.geburtsdatum ?? null },
-      startingSituation: { schulabschluss: "", beruflicheVorerfahrung: "", bisherigePraktika: "", ausgangssituation: "" },
+      baseData: {
+        ...baseData,
+        geburtsdatum: baseData.geburtsdatum ?? null,
+        kompetenzanalyseEnde: baseData.kompetenzanalyseEnde ?? null,
+        massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null
+      },
+      startingSituation: { schulabschluss: "nicht_bekannt", beruflicheVorerfahrung: [], bisherigePraktika: "", ausgangssituation: "" },
       subCompetences: [],
       evidence: [],
-      career: { berufswunsch: "", alternativen: "", orientierungsstatus: "", erprobteBerufsfelder: "", praktikumserkenntnisse: "" },
+      career: {
+        berufswunsch: "",
+        berufswunschVorhanden: null,
+        berufswunschGefestigt: null,
+        berufswunschPraktischErprobt: null,
+        alternativen: "",
+        orientierungsstatus: "",
+        weitereOrientierungErforderlich: false,
+        berufsfelder: [],
+        praktikumserkenntnisse: ""
+      },
       further: { selbsteinschaetzung: "", weitereBeobachtungen: "", freitext: "" },
       supportAreaCandidates: [],
       supportGoals: [],
       previousLuv: null,
       comparisonClaims: [],
       sections: [],
+      foerderzielbereichTracking: [],
+      teilnehmerbesprechung: {
+        besprochen: null,
+        datum: null,
+        mehrfertigungAusgehaendigt: null,
+        besprechungNichtMoeglich: false,
+        hinweisGrund: ""
+      },
       approvedForExport: false,
       approvalTimestamp: null
     });
@@ -72,7 +98,12 @@ casesRouter.put(
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
     const baseData = BaseDataSchema.parse(req.body);
-    record.baseData = { ...baseData, geburtsdatum: baseData.geburtsdatum ?? null };
+    record.baseData = {
+      ...baseData,
+      geburtsdatum: baseData.geburtsdatum ?? null,
+      kompetenzanalyseEnde: baseData.kompetenzanalyseEnde ?? null,
+      massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null
+    };
     record.sections = ensureSectionSkeleton(record);
     putCase(record);
     logEvent("base_data_updated", { caseId: record.id });
@@ -334,6 +365,48 @@ casesRouter.get(
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
     res.json(runReleaseCheck(record));
+  })
+);
+
+casesRouter.get(
+  "/:id/fristen",
+  asyncHandler(async (req, res) => {
+    const record = getCase(req.params.id);
+    if (!record) throw notFoundCase();
+    res.json({
+      fristen: computeFristen(record.baseData),
+      kompetenzanalyseDauerHinweis: checkKompetenzanalyseDauer(record.baseData)
+    });
+  })
+);
+
+casesRouter.put(
+  "/:id/teilnehmerbesprechung",
+  asyncHandler(async (req, res) => {
+    const record = getCase(req.params.id);
+    if (!record) throw notFoundCase();
+    record.teilnehmerbesprechung = TeilnehmerbesprechungSchema.parse(req.body);
+    putCase(record);
+    logEvent("teilnehmerbesprechung_updated", { caseId: record.id });
+    res.json(record);
+  })
+);
+
+casesRouter.put(
+  "/:id/foerderzielbereich-tracking",
+  asyncHandler(async (req, res) => {
+    const record = getCase(req.params.id);
+    if (!record) throw notFoundCase();
+    const input = FoerderzielbereichTrackingUpdateSchema.parse(req.body);
+    const existingIndex = record.foerderzielbereichTracking.findIndex((t) => t.bereich === input.bereich);
+    if (existingIndex >= 0) {
+      record.foerderzielbereichTracking[existingIndex] = input;
+    } else {
+      record.foerderzielbereichTracking.push(input);
+    }
+    putCase(record);
+    logEvent("foerderzielbereich_tracking_updated", { caseId: record.id, bereich: input.bereich, status: input.status });
+    res.json(record.foerderzielbereichTracking);
   })
 );
 

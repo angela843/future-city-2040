@@ -9,6 +9,12 @@
  * TODO: fachlich abgleichen - dieser Katalog basiert auf den in PH-15 "vorgeschlagenen"
  * Unterkompetenzen (Abschnitt 4-9) und ist ausdruecklich nicht mit der aktuellen
  * Leistungsbeschreibung BvB/BvB Reha oder dem offiziellen LUV-Vordruck abgeglichen.
+ *
+ * TODO: fachlich abgleichen (PH-15 v1.1 Abschnitt 16) - die "zusaetzlichen
+ * Schluesselkompetenzen" (lebenspraktische Fertigkeiten, interkulturelle Kompetenzen,
+ * gruene Kompetenzen, Diversitaetskompetenzen, Selbstlernkompetenzen) sind im
+ * Anforderungskatalog NICHT eindeutig einem der sechs Hauptbereiche zugeordnet. Die
+ * Zuordnung unten ist eine plausible Arbeitsannahme und noch fachlich zu bestaetigen.
  */
 import { CompetenceArea } from "./types.js";
 
@@ -53,7 +59,8 @@ export const COMPETENCE_CATALOG: Record<CompetenceArea, CatalogEntry[]> = {
     { id: "CAT_DIGI_KOMMUNIKATION", label: "Digitale Kommunikation" },
     { id: "CAT_DIGI_DATENEINGABE", label: "Dateneingabe" },
     { id: "CAT_DIGI_SPEICHERN", label: "Speichern und Wiederfinden von Dokumenten" },
-    { id: "CAT_DIGI_ARBEITSAUFTRAEGE", label: "Sicherer Umgang mit digitalen Arbeitsaufträgen" }
+    { id: "CAT_DIGI_ARBEITSAUFTRAEGE", label: "Digitale Arbeitsaufträge" },
+    { id: "CAT_DIGI_MEDIENKOMPETENZ", label: "IT- und Medienkompetenz im beruflichen Kontext" }
   ],
   personale_kompetenzen: [
     { id: "CAT_PERS_ZUVERLAESSIGKEIT", label: "Zuverlässigkeit" },
@@ -66,7 +73,8 @@ export const COMPETENCE_CATALOG: Record<CompetenceArea, CatalogEntry[]> = {
     { id: "CAT_PERS_FEEDBACK", label: "Umgang mit Feedback" },
     { id: "CAT_PERS_SELBSTEINSCHAETZUNG", label: "Selbsteinschätzung" },
     { id: "CAT_PERS_NEUE_AUFGABEN", label: "Umgang mit neuen Aufgaben" },
-    { id: "CAT_PERS_VERANTWORTUNG", label: "Verantwortungsübernahme" }
+    { id: "CAT_PERS_VERANTWORTUNG", label: "Verantwortungsübernahme" },
+    { id: "CAT_PERS_LEBENSPRAKTISCH", label: "Lebenspraktische Fertigkeiten", group: "Zusätzliche Schlüsselkompetenz" }
   ],
   sozial_kommunikative_kompetenzen: [
     { id: "CAT_SOC_TEAMARBEIT", label: "Teamarbeit" },
@@ -79,7 +87,9 @@ export const COMPETENCE_CATALOG: Record<CompetenceArea, CatalogEntry[]> = {
     { id: "CAT_SOC_RUECKSICHTNAHME", label: "Rücksichtnahme" },
     { id: "CAT_SOC_UNTERSTUETZUNG", label: "Unterstützung anderer" },
     { id: "CAT_SOC_GRUPPENVERHALTEN", label: "Verhalten in Gruppen" },
-    { id: "CAT_SOC_AUFTRETEN", label: "Angemessenes Auftreten" }
+    { id: "CAT_SOC_AUFTRETEN", label: "Angemessenes Auftreten" },
+    { id: "CAT_SOC_INTERKULTURELL", label: "Interkulturelle Kompetenzen", group: "Zusätzliche Schlüsselkompetenz" },
+    { id: "CAT_SOC_DIVERSITAET", label: "Diversitätskompetenzen", group: "Zusätzliche Schlüsselkompetenz" }
   ],
   methodische_kompetenzen: [
     { id: "CAT_METH_ARBEITSPLANUNG", label: "Arbeitsplanung" },
@@ -91,7 +101,8 @@ export const COMPETENCE_CATALOG: Record<CompetenceArea, CatalogEntry[]> = {
     { id: "CAT_METH_LERNSTRATEGIEN", label: "Lernstrategien" },
     { id: "CAT_METH_UEBERTRAGUNG", label: "Übertragung auf neue Aufgaben" },
     { id: "CAT_METH_PRIORISIERUNG", label: "Priorisierung" },
-    { id: "CAT_METH_HILFSMITTEL", label: "Umgang mit Hilfsmitteln" }
+    { id: "CAT_METH_HILFSMITTEL", label: "Umgang mit Hilfsmitteln" },
+    { id: "CAT_METH_SELBSTLERNKOMPETENZ", label: "Selbstlernkompetenz" }
   ],
   berufliche_orientierung_praxis: [
     { id: "CAT_PRACTICE_INTERESSE", label: "Berufliches Interesse" },
@@ -105,7 +116,11 @@ export const COMPETENCE_CATALOG: Record<CompetenceArea, CatalogEntry[]> = {
     { id: "CAT_PRACTICE_BETRIEBSVERHALTEN", label: "Verhalten im Betrieb" },
     { id: "CAT_PRACTICE_KUNDENKONTAKT", label: "Kundenkontakt" },
     { id: "CAT_PRACTICE_WERKZEUGE", label: "Umgang mit Werkzeugen/Arbeitsmitteln" },
-    { id: "CAT_PRACTICE_ORIENTIERUNG", label: "Orientierung im Berufsfeld" }
+    { id: "CAT_PRACTICE_ORIENTIERUNG", label: "Orientierung im Berufsfeld" },
+    { id: "CAT_PRACTICE_REALISIERBARKEIT", label: "Realisierbarkeit des Berufswunsches" },
+    { id: "CAT_PRACTICE_BESTAENDIGKEIT", label: "Beständigkeit des Berufswunsches" },
+    { id: "CAT_PRACTICE_ERPROBUNGSERGEBNISSE", label: "Ergebnisse praktischer Berufsfelderprobungen" },
+    { id: "CAT_PRACTICE_GRUEN", label: "Grüne Kompetenzen", group: "Zusätzliche Schlüsselkompetenz" }
   ]
 };
 

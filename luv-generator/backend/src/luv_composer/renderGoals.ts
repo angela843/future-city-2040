@@ -4,6 +4,7 @@
  * bereits bestaetigter/uebernommener Daten.
  */
 import { SupportGoal } from "../domain/types.js";
+import { BA_FOERDERZIELBEREICH_LABELS } from "../domain/labels.js";
 
 const INCLUDED_STATUSES: SupportGoal["status"][] = ["uebernommen", "bearbeitet", "neu_formuliert"];
 
@@ -25,6 +26,9 @@ const COMPLETION_STATUS_LABELS: Record<NonNullable<SupportGoal["completionStatus
  * Der Zielstatus (completionStatus) darf dagegen erscheinen, da er - anders als die
  * Priorität - eine fachlich bestaetigte Aussage der Koordination ueber den bisherigen
  * Verlauf ist (nur bei Verlaufs-/Abschluss-LUV gesetzt).
+ *
+ * Der BA-Foerderzielbereich (PH-15 v1.1 Abschnitt 47) ist - anders als die interne
+ * Priorisierung - Teil der fachlichen Zielstruktur selbst und wird daher gerendert.
  */
 export function renderSupportGoalsSectionText(goals: SupportGoal[]): string {
   const included = goals.filter((g) => INCLUDED_STATUSES.includes(g.status));
@@ -33,12 +37,13 @@ export function renderSupportGoalsSectionText(goals: SupportGoal[]): string {
   return included
     .map((g) => {
       const statusLine = g.completionStatus ? `\nZielstatus: ${COMPLETION_STATUS_LABELS[g.completionStatus]}` : "";
+      const bereichLine = g.foerderzielbereich ? `\nBA-Förderzielbereich: ${BA_FOERDERZIELBEREICH_LABELS[g.foerderzielbereich]}` : "";
       return [
         `Bereich: ${g.bereich}`,
         `Ausgangslage: ${g.ausgangslage}`,
         `Ziel: ${g.ziel}`,
         `Maßnahme: ${g.massnahme}`,
-        `Überprüfungskriterium: ${g.ueberpruefungskriterium}${statusLine}`
+        `Überprüfungskriterium: ${g.ueberpruefungskriterium}${statusLine}${bereichLine}`
       ].join("\n");
     })
     .join("\n\n");

@@ -4,7 +4,13 @@
  * einheitlichen Zeilenform bereit. Dient ausschliesslich der Datenzusammenstellung -
  * keine Bewertung, keine KI-Beteiligung an dieser Stelle.
  */
-import { AREA_LABELS, AREA_TO_SECTION_KEY } from "./labels.js";
+import {
+  AREA_LABELS,
+  AREA_TO_SECTION_KEY,
+  BERUFLICHE_VORERFAHRUNG_LABELS,
+  ORIENTIERUNGSSTATUS_LABELS,
+  SCHULABSCHLUSS_LABELS
+} from "./labels.js";
 import { CaseRecord, CompetenceArea, LuvSection, SubCompetence } from "./types.js";
 
 export interface SourceNoteRow {
@@ -36,8 +42,18 @@ export function sourceNotesForSection(caseRecord: CaseRecord, key: LuvSection["k
   switch (key) {
     case "initial_situation":
       return [
-        { label: "Schulabschluss", rating: "nicht_relevant" as const, observationNotes: caseRecord.startingSituation.schulabschluss, evidenceIds: [] },
-        { label: "Berufliche Vorerfahrung", rating: "nicht_relevant" as const, observationNotes: caseRecord.startingSituation.beruflicheVorerfahrung, evidenceIds: [] },
+        {
+          label: "Schulabschluss",
+          rating: "nicht_relevant" as const,
+          observationNotes: caseRecord.startingSituation.schulabschluss ? SCHULABSCHLUSS_LABELS[caseRecord.startingSituation.schulabschluss] : "",
+          evidenceIds: []
+        },
+        {
+          label: "Berufliche Vorerfahrung",
+          rating: "nicht_relevant" as const,
+          observationNotes: caseRecord.startingSituation.beruflicheVorerfahrung.map((v) => BERUFLICHE_VORERFAHRUNG_LABELS[v]).join(", "),
+          evidenceIds: []
+        },
         { label: "Bisherige Praktika", rating: "nicht_relevant" as const, observationNotes: caseRecord.startingSituation.bisherigePraktika, evidenceIds: [] },
         { label: "Ausgangssituation", rating: "nicht_relevant" as const, observationNotes: caseRecord.startingSituation.ausgangssituation, evidenceIds: [] }
       ].filter((r) => r.observationNotes.trim().length > 0);
@@ -46,8 +62,20 @@ export function sourceNotesForSection(caseRecord: CaseRecord, key: LuvSection["k
       return [
         { label: "Berufswunsch", rating: "nicht_relevant" as const, observationNotes: caseRecord.career.berufswunsch, evidenceIds: [] },
         { label: "Alternativen", rating: "nicht_relevant" as const, observationNotes: caseRecord.career.alternativen, evidenceIds: [] },
-        { label: "Orientierungsstatus", rating: "nicht_relevant" as const, observationNotes: caseRecord.career.orientierungsstatus, evidenceIds: [] },
-        { label: "Erprobte Berufsfelder", rating: "nicht_relevant" as const, observationNotes: caseRecord.career.erprobteBerufsfelder, evidenceIds: [] },
+        {
+          label: "Orientierungsstatus",
+          rating: "nicht_relevant" as const,
+          observationNotes: caseRecord.career.orientierungsstatus ? ORIENTIERUNGSSTATUS_LABELS[caseRecord.career.orientierungsstatus] : "",
+          evidenceIds: []
+        },
+        {
+          label: "Erprobte Berufsfelder",
+          rating: "nicht_relevant" as const,
+          observationNotes: caseRecord.career.berufsfelder
+            .map((b) => `${b.berufsfeld}${b.zentraleErkenntnis ? ": " + b.zentraleErkenntnis : ""}`)
+            .join("; "),
+          evidenceIds: []
+        },
         { label: "Praktikumserkenntnisse", rating: "nicht_relevant" as const, observationNotes: caseRecord.career.praktikumserkenntnisse, evidenceIds: [] }
       ].filter((r) => r.observationNotes.trim().length > 0);
 
@@ -69,7 +97,12 @@ export function sourceNotesForSection(caseRecord: CaseRecord, key: LuvSection["k
         { label: "Selbsteinschätzung", rating: "nicht_relevant" as const, observationNotes: caseRecord.further.selbsteinschaetzung, evidenceIds: [] },
         { label: "Weitere Beobachtungen", rating: "nicht_relevant" as const, observationNotes: caseRecord.further.weitereBeobachtungen, evidenceIds: [] },
         { label: "Freitext", rating: "nicht_relevant" as const, observationNotes: caseRecord.further.freitext, evidenceIds: [] },
-        { label: "Beruflicher Orientierungsstatus", rating: "nicht_relevant" as const, observationNotes: caseRecord.career.orientierungsstatus, evidenceIds: [] }
+        {
+          label: "Beruflicher Orientierungsstatus",
+          rating: "nicht_relevant" as const,
+          observationNotes: caseRecord.career.orientierungsstatus ? ORIENTIERUNGSSTATUS_LABELS[caseRecord.career.orientierungsstatus] : "",
+          evidenceIds: []
+        }
       ].filter((r) => r.observationNotes.trim().length > 0);
 
     case "overall_assessment":

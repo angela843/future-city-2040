@@ -5,7 +5,8 @@ import {
   EVIDENCE_STATUS_LABELS,
   LuvSection,
   QualityCheckResult,
-  ReleaseCheckResult
+  ReleaseCheckResult,
+  Teilnehmerbesprechung
 } from "../../types.js";
 
 type GenerateResult =
@@ -45,6 +46,8 @@ export function Step7Preview({
   const [releaseCheck, setReleaseCheck] = useState<ReleaseCheckResult | null>(null);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [groundingOpenFor, setGroundingOpenFor] = useState<string | null>(null);
+  const [tbForm, setTbForm] = useState<Teilnehmerbesprechung>(record.teilnehmerbesprechung);
+  const [tbSaving, setTbSaving] = useState(false);
 
   const visibleSections = record.sections.filter((s) => s.text.trim().length > 0 || true);
 
@@ -128,6 +131,17 @@ export function Step7Preview({
 
   async function exportDocx() {
     await downloadDocx(record.id);
+  }
+
+  async function saveTeilnehmerbesprechung(next: Teilnehmerbesprechung) {
+    setTbForm(next);
+    setTbSaving(true);
+    try {
+      const updated = await api.put<CaseRecord>(`/api/cases/${record.id}/teilnehmerbesprechung`, next);
+      onUpdated(updated);
+    } finally {
+      setTbSaving(false);
+    }
   }
 
   return (
@@ -284,6 +298,63 @@ export function Step7Preview({
       })}
 
       <div className="section-block">
+        <h3>Teilnehmerbesprechung / Bekanntgabe</h3>
+        <p className="muted">
+          TODO: fachlich abgleichen – welche dieser Angaben ins offizielle Muster-LUV gehören und welche nur
+          interne Prozessdokumentation sind.
+        </p>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={tbForm.besprochen === true}
+            onChange={(e) => saveTeilnehmerbesprechung({ ...tbForm, besprochen: e.target.checked })}
+          />
+          Mit dem/der Teilnehmenden besprochen
+        </label>
+        {tbForm.besprochen && (
+          <div className="grid-2">
+            <div className="field">
+              <label>Datum der Besprechung</label>
+              <input
+                type="date"
+                value={tbForm.datum ?? ""}
+                onChange={(e) => saveTeilnehmerbesprechung({ ...tbForm, datum: e.target.value || null })}
+              />
+            </div>
+            <div className="field">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={tbForm.mehrfertigungAusgehaendigt === true}
+                  onChange={(e) => saveTeilnehmerbesprechung({ ...tbForm, mehrfertigungAusgehaendigt: e.target.checked })}
+                />
+                Mehrfertigung ausgehändigt
+              </label>
+            </div>
+          </div>
+        )}
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={tbForm.besprechungNichtMoeglich}
+            onChange={(e) => saveTeilnehmerbesprechung({ ...tbForm, besprechungNichtMoeglich: e.target.checked })}
+          />
+          Besprechung nicht möglich
+        </label>
+        {tbForm.besprechungNichtMoeglich && (
+          <div className="field">
+            <label>Kurzer Hinweis/Grund</label>
+            <input
+              value={tbForm.hinweisGrund}
+              onChange={(e) => setTbForm({ ...tbForm, hinweisGrund: e.target.value })}
+              onBlur={(e) => saveTeilnehmerbesprechung({ ...tbForm, hinweisGrund: e.target.value })}
+            />
+          </div>
+        )}
+        {tbSaving && <p className="muted">Speichere…</p>}
+      </div>
+
+      <div className="section-block">
         <h3>Freigabecheck</h3>
         {releaseCheck && releaseCheck.blocked ? (
           <div className="notice error">
@@ -303,9 +374,16 @@ export function Step7Preview({
           releaseCheck && (
             <div className="notice info">
               Keine offenen roten Abschnitte. {releaseCheck.unresolvedSupportAreas > 0 && `${releaseCheck.unresolvedSupportAreas} Förderbereich(e) noch nicht geprüft. `}
-              {releaseCheck.unresolvedSupportGoals > 0 && `${releaseCheck.unresolvedSupportGoals} Förderzielvorschlag/-vorschläge noch nicht bearbeitet.`}
+              {releaseCheck.unresolvedSupportGoals > 0 && `${releaseCheck.unresolvedSupportGoals} Förderzielvorschlag/-vorschläge noch nicht bearbeitet. `}
             </div>
           )
+        )}
+        {releaseCheck && releaseCheck.openQualityWarnings > 0 && (
+          <div className="notice warning">
+            {releaseCheck.openQualityWarnings} weitere Hinweis(e) aus dem Qualitätscheck offen (Maßnahmeart,
+            Teilnehmerbesprechung, Förderzielbereiche u.a. – siehe Qualitäts- und Vollständigkeitscheck oben). Diese
+            blockieren die Freigabe nicht (Warnung statt Zwang).
+          </div>
         )}
       </div>
 

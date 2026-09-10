@@ -16,8 +16,14 @@
  * werden aktuell nur transient an die Oberflaeche zurueckgegeben und nicht dauerhaft
  * je Abschnitt gespeichert; dieser Check kann daher nur die zuletzt sichtbaren
  * Abschnitts-Warnungen und Faktenstatus auswerten, keine historischen Konflikte.
+ *
+ * Version 0.2 / PH-15 v1.1 Abschnitt 64 erweitert die Pruefliste um: Massnahmeart,
+ * LUV-Art und Teilnehmerbesprechung. Nur die roten/unbelegten Abschnitte (Abschnitt 43)
+ * blockieren technisch; die uebrigen Punkte sind informativ (Warnung statt Zwang,
+ * analog zum Qualitaetscheck) und werden ueber `openQualityWarnings` sichtbar gemacht.
  */
 import { CaseRecord, LuvSection } from "./types.js";
+import { runQualityCheck } from "./qualityCheck.js";
 
 export interface ReleaseCheckBlockingSection {
   key: LuvSection["key"];
@@ -32,6 +38,8 @@ export interface ReleaseCheckResult {
   unresolvedSupportGoals: number;
   unresolvedSupportAreas: number;
   openWarnings: number;
+  /** Anzahl offener (nicht blockierender) Hinweise aus dem Qualitaetscheck, inkl. Maßnahmeart/LuV-Art/Teilnehmerbesprechung. */
+  openQualityWarnings: number;
 }
 
 export function runReleaseCheck(c: CaseRecord): ReleaseCheckResult {
@@ -63,6 +71,7 @@ export function runReleaseCheck(c: CaseRecord): ReleaseCheckResult {
     blockingSections,
     unresolvedSupportGoals,
     unresolvedSupportAreas,
-    openWarnings
+    openWarnings,
+    openQualityWarnings: runQualityCheck(c).warningCount
   };
 }

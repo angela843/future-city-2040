@@ -16,11 +16,12 @@ export function runQualityCheck(c: CaseRecord): QualityCheckResult {
   const baseDataComplete =
     !!c.baseData.teilnehmerName.trim() &&
     !!c.baseData.massnahme.trim() &&
+    !!c.baseData.massnahmeart &&
     !!c.baseData.eintrittsdatum &&
     !!c.baseData.koordination.trim() &&
     !!c.baseData.beurteilungszeitraumVon &&
     !!c.baseData.beurteilungszeitraumBis;
-  items.push({ key: "base_data", label: "Grunddaten vollständig", ok: baseDataComplete });
+  items.push({ key: "base_data", label: "Grunddaten vollständig (inkl. Maßnahmeart)", ok: baseDataComplete });
 
   if (c.baseData.luvArt === "start") {
     items.push({
@@ -61,7 +62,7 @@ export function runQualityCheck(c: CaseRecord): QualityCheckResult {
   items.push({
     key: "career_orientation",
     label: "Berufliche Orientierung erfasst",
-    ok: !!c.career.berufswunsch.trim() || !!c.career.orientierungsstatus.trim()
+    ok: !!c.career.berufswunsch.trim() || !!c.career.orientierungsstatus
   });
 
   items.push({
@@ -85,6 +86,39 @@ export function runQualityCheck(c: CaseRecord): QualityCheckResult {
     ok: !hasConfirmedSupportAreas || hasConfirmedGoals
   });
 
+  // PH-15 v1.1 Abschnitt 48 (MUSS): Foerderziel ohne zugeordneten BA-Foerderzielbereich -> Warnung.
+  const confirmedGoals = c.supportGoals.filter((g) => ["uebernommen", "bearbeitet", "neu_formuliert"].includes(g.status));
+  items.push({
+    key: "goal_foerderzielbereich",
+    label: "Bestätigte Förderziele einem BA-Förderzielbereich zugeordnet",
+    ok: confirmedGoals.every((g) => !!g.foerderzielbereich),
+    hint:
+      confirmedGoals.every((g) => !!g.foerderzielbereich) || confirmedGoals.length === 0
+        ? undefined
+        : "Mindestens ein bestätigtes Förderziel ist keinem BA-Förderzielbereich zugeordnet."
+  });
+
+  // PH-15 v1.1 Abschnitt 26, 64: offene, noch nicht ausgeraeumte Warnungen/Konflikte je Abschnitt.
+  const openWarnings = c.sections.some((s) => s.warnings.length > 0 && !s.manualOverride);
+  items.push({
+    key: "open_conflicts",
+    label: "Keine offenen Konflikte/Warnungen in KI-Abschnitten",
+    ok: !openWarnings,
+    hint: openWarnings ? "Es gibt Abschnitte mit offenen Warnungen, die noch nicht fachlich bearbeitet wurden." : undefined
+  });
+
+  // PH-15 v1.1 Abschnitt 65 (MUSS): Teilnehmerbesprechung/Bekanntgabe.
+  const tb = c.teilnehmerbesprechung;
+  const teilnehmerbesprechungOk = tb.besprechungNichtMoeglich ? !!tb.hinweisGrund.trim() : tb.besprochen === true;
+  items.push({
+    key: "teilnehmerbesprechung",
+    label: "Teilnehmerbesprechung/Bekanntgabe dokumentiert",
+    ok: teilnehmerbesprechungOk,
+    hint: teilnehmerbesprechungOk
+      ? undefined
+      : "Noch nicht dokumentiert, ob die LUV mit dem/der Teilnehmenden besprochen wurde."
+  });
+
   if (c.baseData.luvArt !== "start") {
     items.push({
       key: "previous_comparison_data",
@@ -95,6 +129,12 @@ export function runQualityCheck(c: CaseRecord): QualityCheckResult {
       key: "confirmed_development",
       label: "Bestätigte Entwicklung vorhanden",
       ok: c.comparisonClaims.some((claim) => claim.confirmed)
+    });
+    // PH-15 v1.1 Abschnitt 27: Stand der BA-Foerderzielbereiche fuer Verlaufs-/Abschluss-LUV.
+    items.push({
+      key: "foerderzielbereich_status",
+      label: "Stand der BA-Förderzielbereiche erfasst",
+      ok: c.foerderzielbereichTracking.length > 0
     });
   }
 
@@ -107,7 +147,7 @@ export function runQualityCheck(c: CaseRecord): QualityCheckResult {
     items.push({
       key: "perspective",
       label: "Aktuelle Perspektive erfasst",
-      ok: !!c.career.orientierungsstatus.trim() || !!c.further.freitext.trim()
+      ok: !!c.career.orientierungsstatus || !!c.further.freitext.trim()
     });
   }
 

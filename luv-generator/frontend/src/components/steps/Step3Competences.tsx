@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { api } from "../../api/client.js";
 import {
   AREA_LABELS,
+  BAFoerderzielbereich,
+  BA_FOERDERZIELBEREICHE,
+  BA_FOERDERZIELBEREICH_LABELS,
   CaseRecord,
   CatalogEntry,
   ClarificationCheckResult,
@@ -35,7 +38,8 @@ const emptyForm = () => ({
   observationNotes: "",
   source: "beobachtung" as EvidenceSource,
   evidenceIds: [] as string[],
-  relevantForLuv: true
+  relevantForLuv: true,
+  foerderzielbereiche: [] as BAFoerderzielbereich[]
 });
 
 export function Step3Competences({
@@ -74,7 +78,8 @@ export function Step3Competences({
       observationNotes: sc.observationNotes,
       source: "beobachtung",
       evidenceIds: sc.evidenceIds,
-      relevantForLuv: sc.relevantForLuv
+      relevantForLuv: sc.relevantForLuv,
+      foerderzielbereiche: sc.foerderzielbereiche ?? []
     });
     setClarification(null);
     setStructureResult(null);
@@ -134,7 +139,8 @@ export function Step3Competences({
         rating: form.rating,
         observationNotes: form.observationNotes,
         evidenceIds,
-        relevantForLuv: form.relevantForLuv
+        relevantForLuv: form.relevantForLuv,
+        foerderzielbereiche: form.foerderzielbereiche
       });
       onUpdated(updated);
       setForm(emptyForm());
@@ -172,6 +178,11 @@ export function Step3Competences({
         <div key={sc.id} className="competence-row">
           <strong>{sc.label}</strong> <span className="badge">{RATING_LABELS[sc.rating]}</span>
           {!sc.relevantForLuv && <span className="badge">nicht relevant für LUV</span>}
+          {(sc.foerderzielbereiche ?? []).map((b) => (
+            <span key={b} className="badge">
+              {BA_FOERDERZIELBEREICH_LABELS[b]}
+            </span>
+          ))}
           <p className="muted">{sc.observationNotes || "(keine Stichpunkte)"}</p>
           <button type="button" onClick={() => startEdit(sc)}>
             Bearbeiten
@@ -243,6 +254,28 @@ export function Step3Competences({
             />
             Für aktuellen LUV relevant
           </label>
+        </div>
+        <div className="field">
+          <label>BA-Förderzielbereich(e) (optional)</label>
+          <div className="checkbox-group">
+            {BA_FOERDERZIELBEREICHE.map((b) => (
+              <label key={b} className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={form.foerderzielbereiche.includes(b)}
+                  onChange={() =>
+                    setForm((f) => ({
+                      ...f,
+                      foerderzielbereiche: f.foerderzielbereiche.includes(b)
+                        ? f.foerderzielbereiche.filter((x) => x !== b)
+                        : [...f.foerderzielbereiche, b]
+                    }))
+                  }
+                />
+                {BA_FOERDERZIELBEREICH_LABELS[b]}
+              </label>
+            ))}
+          </div>
         </div>
         <div className="field">
           <label>Beobachtungsstichpunkte</label>

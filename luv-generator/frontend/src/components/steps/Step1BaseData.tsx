@@ -1,6 +1,6 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { api } from "../../api/client.js";
-import { BaseData, CaseRecord, LuvArt } from "../../types.js";
+import { BaseData, CaseRecord, FristenResult, KompetenzanalyseDauerHinweis, LuvArt, MASSNAHMEART_LABELS, MASSNAHMEART_VALUES, Massnahmeart } from "../../types.js";
 
 interface DemoInfo {
   key: string;
@@ -11,7 +11,10 @@ const EMPTY: BaseData = {
   teilnehmerName: "",
   geburtsdatum: "",
   massnahme: "",
+  massnahmeart: "bvb",
   eintrittsdatum: "",
+  kompetenzanalyseEnde: "",
+  massnahmeEndeGeplant: "",
   luvArt: "start",
   beurteilungszeitraumVon: "",
   beurteilungszeitraumBis: "",
@@ -36,10 +39,30 @@ export function Step1BaseData({
   const [form, setForm] = useState<BaseData>(record?.baseData ?? EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fristen, setFristen] = useState<FristenResult | null>(null);
+  const [dauerHinweis, setDauerHinweis] = useState<KompetenzanalyseDauerHinweis | null>(null);
 
   function set<K extends keyof BaseData>(key: K, value: BaseData[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  useEffect(() => {
+    if (!record) return;
+    let cancelled = false;
+    api
+      .get<{ fristen: FristenResult; kompetenzanalyseDauerHinweis: KompetenzanalyseDauerHinweis }>(`/api/cases/${record.id}/fristen`)
+      .then((res) => {
+        if (cancelled) return;
+        setFristen(res.fristen);
+        setDauerHinweis(res.kompetenzanalyseDauerHinweis);
+      })
+      .catch(() => {
+        // Fristenanzeige ist informativ - bei Fehler einfach nicht anzeigen.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [record, record?.baseData]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -119,13 +142,35 @@ export function Step1BaseData({
             <input id="massnahme" required value={form.massnahme} onChange={(e) => set("massnahme", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="eintrittsdatum">Eintrittsdatum</label>
+            <label htmlFor="massnahmeart">Maßnahmeart</label>
+            <select id="massnahmeart" value={form.massnahmeart} onChange={(e) => set("massnahmeart", e.target.value as Massnahmeart)}>
+              {MASSNAHMEART_VALUES.map((m) => (
+                <option key={m} value={m}>
+                  {MASSNAHMEART_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid-2">
+          <div className="field">
+            <label htmlFor="eintrittsdatum">Eintrittsdatum (Maßnahmebeginn)</label>
             <input
               id="eintrittsdatum"
               type="date"
               required
               value={form.eintrittsdatum}
               onChange={(e) => set("eintrittsdatum", e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="kompetenzanalyseEnde">Ende der Kompetenzanalyse</label>
+            <input
+              id="kompetenzanalyseEnde"
+              type="date"
+              value={form.kompetenzanalyseEnde ?? ""}
+              onChange={(e) => set("kompetenzanalyseEnde", e.target.value || null)}
             />
           </div>
         </div>
@@ -172,6 +217,34 @@ export function Step1BaseData({
             />
           </div>
         </div>
+
+        <div className="field">
+          <label htmlFor="massnahmeEndeGeplant">Geplantes Maßnahmeende</label>
+          <input
+            id="massnahmeEndeGeplant"
+            type="date"
+            value={form.massnahmeEndeGeplant ?? ""}
+            onChange={(e) => set("massnahmeEndeGeplant", e.target.value || null)}
+          />
+          <p className="muted">
+            Grundlage für die Fristen der weiteren Verlaufs-LUV (6 Wochen vorher) und der Abschluss-LUV.
+            TODO: fachlich abgleichen – bei abweichendem tatsächlichen Austritt gilt der tatsächliche letzte
+            Teilnahmetag.
+          </p>
+        </div>
+
+        {fristen && (
+          <div className="card" style={{ background: "var(--card-bg-muted, #f4f4f4)" }}>
+            <h3>LUV-Fristen (berechnet)</h3>
+            <ul>
+              <li>Start-LUV fällig: {fristen.startLuvFaellig ?? "– (Ende Kompetenzanalyse fehlt)"}</li>
+              <li>Erste Verlaufs-LUV fällig: {fristen.ersteVerlaufsLuvFaellig ?? "–"}</li>
+              <li>Weitere Verlaufs-LUV fällig: {fristen.weitereVerlaufsLuvFaellig ?? "– (geplantes Maßnahmeende fehlt)"}</li>
+              <li>Abschluss-LUV fällig: {fristen.abschlussLuvFaellig ?? "– (geplantes Maßnahmeende fehlt)"}</li>
+            </ul>
+            {dauerHinweis && !dauerHinweis.ok && <div className="notice warn">{dauerHinweis.hinweis}</div>}
+          </div>
+        )}
 
         {error && <div className="notice error">{error}</div>}
 

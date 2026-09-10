@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client.js";
 import {
+  BAFoerderzielbereich,
+  BA_FOERDERZIELBEREICHE,
+  BA_FOERDERZIELBEREICH_LABELS,
   CaseRecord,
   COMPLETION_STATUS_LABELS,
+  FOERDERZIELBEREICH_STATUS_LABELS,
+  FoerderzielbereichStatus,
   GoalCompletionStatus,
   GoalPriority,
   MeasureLibraryEntry,
@@ -71,6 +76,13 @@ export function Step6SupportNeeds({
   async function updateGoal(goal: SupportGoal, patch: Partial<SupportGoal>) {
     await api.put(`/api/cases/${record.id}/support-goals/${goal.id}`, { ...goal, ...patch });
     const updated = await api.get<CaseRecord>(`/api/cases/${record.id}`);
+    onUpdated(updated);
+  }
+
+  async function setTrackingStatus(bereich: BAFoerderzielbereich, status: FoerderzielbereichStatus) {
+    const updated = await api
+      .put(`/api/cases/${record.id}/foerderzielbereich-tracking`, { bereich, status })
+      .then(() => api.get<CaseRecord>(`/api/cases/${record.id}`));
     onUpdated(updated);
   }
 
@@ -198,6 +210,25 @@ export function Step6SupportNeeds({
               </div>
               <div className="grid-2">
                 <div className="field">
+                  <label>BA-Förderzielbereich</label>
+                  <select
+                    value={goal.foerderzielbereich ?? ""}
+                    onChange={(e) =>
+                      updateGoal(goal, { foerderzielbereich: (e.target.value || undefined) as BAFoerderzielbereich | undefined })
+                    }
+                  >
+                    <option value="">(nicht zugeordnet)</option>
+                    {BA_FOERDERZIELBEREICHE.map((b) => (
+                      <option key={b} value={b}>
+                        {BA_FOERDERZIELBEREICH_LABELS[b]}
+                      </option>
+                    ))}
+                  </select>
+                  {!goal.foerderzielbereich && ["uebernommen", "bearbeitet", "neu_formuliert"].includes(goal.status) && (
+                    <span className="hint">Ohne Förderzielbereich erscheint dieses Ziel im Qualitätscheck als offener Hinweis.</span>
+                  )}
+                </div>
+                <div className="field">
                   <label>Priorität (intern, erscheint nicht im LUV-Text)</label>
                   <select
                     value={goal.prioritaet ?? ""}
@@ -240,6 +271,30 @@ export function Step6SupportNeeds({
                 <button type="button" className="danger" onClick={() => updateGoal(goal, { status: "verworfen" })}>
                   Verwerfen
                 </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="card">
+        <h2>Stand der BA-Förderzielbereiche</h2>
+        <p className="muted">
+          Mehrere Förderzielbereiche können gleichzeitig aktiv sein (nicht linear modelliert). Der Status wird nur
+          organisatorisch gepflegt und ist keine automatische Ableitung.
+        </p>
+        {BA_FOERDERZIELBEREICHE.map((b) => {
+          const tracking = record.foerderzielbereichTracking.find((t) => t.bereich === b);
+          return (
+            <div key={b} className="competence-row">
+              <strong>{BA_FOERDERZIELBEREICH_LABELS[b]}</strong>{" "}
+              {tracking && <span className="badge">{FOERDERZIELBEREICH_STATUS_LABELS[tracking.status]}</span>}
+              <div className="button-row">
+                {(Object.keys(FOERDERZIELBEREICH_STATUS_LABELS) as FoerderzielbereichStatus[]).map((s) => (
+                  <button key={s} type="button" disabled={tracking?.status === s} onClick={() => setTrackingStatus(b, s)}>
+                    {FOERDERZIELBEREICH_STATUS_LABELS[s]}
+                  </button>
+                ))}
               </div>
             </div>
           );

@@ -1,5 +1,93 @@
 export type LuvArt = "start" | "verlauf" | "abschluss";
 
+export const MASSNAHMEART_VALUES = ["bvb", "bvb_reha"] as const;
+export type Massnahmeart = (typeof MASSNAHMEART_VALUES)[number];
+export const MASSNAHMEART_LABELS: Record<Massnahmeart, string> = {
+  bvb: "BvB",
+  bvb_reha: "BvB-Reha"
+};
+
+export const BA_FOERDERZIELBEREICHE = [
+  "grundkompetenzen",
+  "berufsorientierung_berufswahl",
+  "berufliche_grundfaehigkeiten",
+  "berufsspezifische_qualifizierung",
+  "erwerb_hauptschulabschluss"
+] as const;
+export type BAFoerderzielbereich = (typeof BA_FOERDERZIELBEREICHE)[number];
+export const BA_FOERDERZIELBEREICH_LABELS: Record<BAFoerderzielbereich, string> = {
+  grundkompetenzen: "Grundkompetenzen",
+  berufsorientierung_berufswahl: "Berufsorientierung/Berufswahl",
+  berufliche_grundfaehigkeiten: "Berufliche Grundfähigkeiten",
+  berufsspezifische_qualifizierung: "Berufsspezifische Qualifizierung",
+  erwerb_hauptschulabschluss: "Erwerb Hauptschulabschluss"
+};
+
+export type FoerderzielbereichStatus = "begonnen" | "aktiv" | "abgeschlossen" | "erneut_geoeffnet";
+export const FOERDERZIELBEREICH_STATUS_LABELS: Record<FoerderzielbereichStatus, string> = {
+  begonnen: "Begonnen",
+  aktiv: "Aktiv",
+  abgeschlossen: "Abgeschlossen",
+  erneut_geoeffnet: "Erneut geöffnet"
+};
+export interface FoerderzielbereichTracking {
+  bereich: BAFoerderzielbereich;
+  status: FoerderzielbereichStatus;
+}
+
+export const SCHULABSCHLUSS_OPTIONS = [
+  "kein_schulabschluss",
+  "esa",
+  "msa",
+  "fachhochschulreife",
+  "abitur",
+  "sonstiger",
+  "noch_schulpflichtig",
+  "nicht_bekannt"
+] as const;
+export type Schulabschluss = (typeof SCHULABSCHLUSS_OPTIONS)[number];
+export const SCHULABSCHLUSS_LABELS: Record<Schulabschluss, string> = {
+  kein_schulabschluss: "Kein Schulabschluss",
+  esa: "Erster Schulabschluss (ESA)",
+  msa: "Mittlerer Schulabschluss (MSA)",
+  fachhochschulreife: "Fachhochschulreife",
+  abitur: "Abitur",
+  sonstiger: "Sonstiger Abschluss",
+  noch_schulpflichtig: "Noch schulpflichtig",
+  nicht_bekannt: "Nicht bekannt"
+};
+
+export const BERUFLICHE_VORERFAHRUNG_OPTIONS = [
+  "keine",
+  "praktikum",
+  "mehrere_praktika",
+  "ausbildung_begonnen",
+  "ausbildung_abgebrochen",
+  "beschaeftigung",
+  "vorherige_massnahme",
+  "sonstige"
+] as const;
+export type BeruflicheVorerfahrung = (typeof BERUFLICHE_VORERFAHRUNG_OPTIONS)[number];
+export const BERUFLICHE_VORERFAHRUNG_LABELS: Record<BeruflicheVorerfahrung, string> = {
+  keine: "Keine",
+  praktikum: "Praktikum",
+  mehrere_praktika: "Mehrere Praktika",
+  ausbildung_begonnen: "Ausbildung begonnen",
+  ausbildung_abgebrochen: "Ausbildung abgebrochen",
+  beschaeftigung: "Beschäftigung",
+  vorherige_massnahme: "Vorherige Maßnahme",
+  sonstige: "Sonstige"
+};
+
+export const ORIENTIERUNGSSTATUS_OPTIONS = ["konkret", "grundsaetzlich_vorhanden", "unsicher", "weitere_orientierung_erforderlich"] as const;
+export type Orientierungsstatus = (typeof ORIENTIERUNGSSTATUS_OPTIONS)[number];
+export const ORIENTIERUNGSSTATUS_LABELS: Record<Orientierungsstatus, string> = {
+  konkret: "Konkret",
+  grundsaetzlich_vorhanden: "Grundsätzlich vorhanden",
+  unsicher: "Unsicher",
+  weitere_orientierung_erforderlich: "Weitere Orientierung erforderlich"
+};
+
 export type CompetenceRating =
   | "staerke"
   | "ueberwiegend_sicher"
@@ -81,6 +169,7 @@ export interface SubCompetence {
   evidenceIds: string[];
   catalogId?: string;
   relevantForLuv: boolean;
+  foerderzielbereiche?: BAFoerderzielbereich[];
 }
 
 export type SupportAreaStatus = "pending" | "confirmed" | "rejected";
@@ -127,15 +216,27 @@ export interface SupportGoal {
   prioritaet?: GoalPriority;
   measureSource?: MeasureSource;
   completionStatus?: GoalCompletionStatus;
+  foerderzielbereich?: BAFoerderzielbereich;
   status: GoalStatus;
   manualOverride: boolean;
 }
 
+export interface BerufsfeldEintrag {
+  berufsfeld: string;
+  orientierungspraktikum: boolean;
+  zentraleErkenntnis: string;
+  quelle: EvidenceSource | "";
+}
+
 export interface CareerInfo {
   berufswunsch: string;
+  berufswunschVorhanden: boolean | null;
+  berufswunschGefestigt: boolean | null;
+  berufswunschPraktischErprobt: boolean | null;
   alternativen: string;
-  orientierungsstatus: string;
-  erprobteBerufsfelder: string;
+  orientierungsstatus: Orientierungsstatus | "";
+  weitereOrientierungErforderlich: boolean;
+  berufsfelder: BerufsfeldEintrag[];
   praktikumserkenntnisse: string;
 }
 
@@ -149,7 +250,10 @@ export interface BaseData {
   teilnehmerName: string;
   geburtsdatum: string | null;
   massnahme: string;
+  massnahmeart: Massnahmeart;
   eintrittsdatum: string;
+  kompetenzanalyseEnde: string | null;
+  massnahmeEndeGeplant: string | null;
   luvArt: LuvArt;
   beurteilungszeitraumVon: string;
   beurteilungszeitraumBis: string;
@@ -157,10 +261,31 @@ export interface BaseData {
 }
 
 export interface StartingSituation {
-  schulabschluss: string;
-  beruflicheVorerfahrung: string;
+  schulabschluss: Schulabschluss;
+  beruflicheVorerfahrung: BeruflicheVorerfahrung[];
   bisherigePraktika: string;
   ausgangssituation: string;
+}
+
+export interface Teilnehmerbesprechung {
+  besprochen: boolean | null;
+  datum: string | null;
+  mehrfertigungAusgehaendigt: boolean | null;
+  besprechungNichtMoeglich: boolean;
+  hinweisGrund: string;
+}
+
+export interface FristenResult {
+  startLuvFaellig: string | null;
+  ersteVerlaufsLuvFaellig: string | null;
+  weitereVerlaufsLuvFaellig: string | null;
+  abschlussLuvFaellig: string | null;
+}
+
+export interface KompetenzanalyseDauerHinweis {
+  ok: boolean;
+  wochenGerundet?: number;
+  hinweis?: string;
 }
 
 export type ComparisonStatus =
@@ -258,6 +383,7 @@ export interface ReleaseCheckResult {
   unresolvedSupportGoals: number;
   unresolvedSupportAreas: number;
   openWarnings: number;
+  openQualityWarnings: number;
 }
 
 export interface CatalogEntry {
@@ -273,6 +399,7 @@ export interface MeasureLibraryEntry {
   area: CompetenceArea;
   group?: string;
   text: string;
+  foerderzielbereiche?: BAFoerderzielbereich[];
 }
 
 export interface ClarificationCheckResult {
@@ -306,6 +433,8 @@ export interface CaseRecord {
   previousLuv: PreviousLuvInput | null;
   comparisonClaims: ComparisonClaim[];
   sections: LuvSection[];
+  foerderzielbereichTracking: FoerderzielbereichTracking[];
+  teilnehmerbesprechung: Teilnehmerbesprechung;
   approvedForExport: boolean;
   approvalTimestamp: string | null;
 }

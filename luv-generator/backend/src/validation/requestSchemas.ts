@@ -2,15 +2,26 @@
  * Serverseitige Eingabevalidierung fuer die Wizard-API (Spezifikation Abschnitt 41).
  */
 import { z } from "zod";
-import { COMPETENCE_AREAS } from "../domain/types.js";
+import {
+  BA_FOERDERZIELBEREICHE,
+  BERUFLICHE_VORERFAHRUNG_OPTIONS,
+  COMPETENCE_AREAS,
+  ORIENTIERUNGSSTATUS_OPTIONS,
+  SCHULABSCHLUSS_OPTIONS
+} from "../domain/types.js";
 
 export const LuvArtSchema = z.enum(["start", "verlauf", "abschluss"]);
+export const MassnahmeartSchema = z.enum(["bvb", "bvb_reha"]);
+export const BAFoerderzielbereichSchema = z.enum(BA_FOERDERZIELBEREICHE);
 
 export const BaseDataSchema = z.object({
   teilnehmerName: z.string().min(1).max(200),
   geburtsdatum: z.string().max(20).nullable().optional(),
   massnahme: z.string().max(200),
+  massnahmeart: MassnahmeartSchema,
   eintrittsdatum: z.string().max(20),
+  kompetenzanalyseEnde: z.string().max(20).nullable().optional(),
+  massnahmeEndeGeplant: z.string().max(20).nullable().optional(),
   luvArt: LuvArtSchema,
   beurteilungszeitraumVon: z.string().max(20),
   beurteilungszeitraumBis: z.string().max(20),
@@ -18,8 +29,8 @@ export const BaseDataSchema = z.object({
 });
 
 export const StartingSituationSchema = z.object({
-  schulabschluss: z.string().max(500),
-  beruflicheVorerfahrung: z.string().max(1000),
+  schulabschluss: z.enum(SCHULABSCHLUSS_OPTIONS),
+  beruflicheVorerfahrung: z.array(z.enum(BERUFLICHE_VORERFAHRUNG_OPTIONS)).default([]),
   bisherigePraktika: z.string().max(1000),
   ausgangssituation: z.string().max(3000)
 });
@@ -56,7 +67,8 @@ export const SubCompetenceInputSchema = z.object({
   observationNotes: z.string().max(3000),
   evidenceIds: z.array(z.string()).default([]),
   catalogId: z.string().optional(),
-  relevantForLuv: z.boolean().default(true)
+  relevantForLuv: z.boolean().default(true),
+  foerderzielbereiche: z.array(BAFoerderzielbereichSchema).default([])
 });
 
 export const EvidenceItemInputSchema = z.object({
@@ -65,12 +77,36 @@ export const EvidenceItemInputSchema = z.object({
   area: z.enum(COMPETENCE_AREAS).nullable().optional()
 });
 
+export const BerufsfeldEintragSchema = z.object({
+  berufsfeld: z.string().max(200),
+  orientierungspraktikum: z.boolean().default(false),
+  zentraleErkenntnis: z.string().max(1000),
+  quelle: EvidenceSourceSchema.or(z.literal("")).default("")
+});
+
 export const CareerInfoSchema = z.object({
   berufswunsch: z.string().max(500),
+  berufswunschVorhanden: z.boolean().nullable().default(null),
+  berufswunschGefestigt: z.boolean().nullable().default(null),
+  berufswunschPraktischErprobt: z.boolean().nullable().default(null),
   alternativen: z.string().max(500),
-  orientierungsstatus: z.string().max(500),
-  erprobteBerufsfelder: z.string().max(1000),
+  orientierungsstatus: z.enum(ORIENTIERUNGSSTATUS_OPTIONS).or(z.literal("")).default(""),
+  weitereOrientierungErforderlich: z.boolean().default(false),
+  berufsfelder: z.array(BerufsfeldEintragSchema).default([]),
   praktikumserkenntnisse: z.string().max(2000)
+});
+
+export const TeilnehmerbesprechungSchema = z.object({
+  besprochen: z.boolean().nullable(),
+  datum: z.string().max(20).nullable(),
+  mehrfertigungAusgehaendigt: z.boolean().nullable(),
+  besprechungNichtMoeglich: z.boolean(),
+  hinweisGrund: z.string().max(1000)
+});
+
+export const FoerderzielbereichTrackingUpdateSchema = z.object({
+  bereich: BAFoerderzielbereichSchema,
+  status: z.enum(["begonnen", "aktiv", "abgeschlossen", "erneut_geoeffnet"])
 });
 
 export const FurtherFindingsSchema = z.object({
@@ -94,7 +130,8 @@ export const SupportGoalUpdateSchema = z.object({
   measureSource: z.enum(["bibliothek", "ki_vorschlag", "manuell"]).optional(),
   completionStatus: z
     .enum(["erreicht", "teilweise_erreicht", "weiterhin_aktuell", "angepasst", "nicht_erreicht", "nicht_mehr_relevant"])
-    .optional()
+    .optional(),
+  foerderzielbereich: BAFoerderzielbereichSchema.optional()
 });
 
 export const SectionManualEditSchema = z.object({

@@ -1,4 +1,4 @@
-# LUV-Generator BvB / BvB Reha – Version 0.2
+# LUV-Generator BvB / BvB Reha – Version 0.2 (PH-15 Arbeitsfassung 1.1)
 
 > **TESTSYSTEM – Keine echten personenbezogenen Daten eingeben.**
 > Dieses System verwendet ausschließlich fiktive Testdaten. Es ist kein
@@ -25,8 +25,9 @@ Bildungsmaßnahmen (BvB / BvB Reha).
 10. [Projektstruktur](#projektstruktur)
 11. [Implementierte Sicherheits-/Datenschutzregeln](#implementierte-sicherheits--datenschutzregeln)
 12. [Version 0.1 → 0.2 – Änderungsübersicht](#version-01--02--änderungsübersicht)
-13. [Bekannte offene Punkte](#bekannte-offene-punkte)
-14. [Vorschläge für Version 0.3](#vorschläge-für-version-03)
+13. [PH-15 Arbeitsfassung 1.1 – Ergänzungen](#ph-15-arbeitsfassung-11--ergänzungen)
+14. [Bekannte offene Punkte](#bekannte-offene-punkte)
+15. [Vorschläge für Version 0.3](#vorschläge-für-version-03)
 
 ---
 
@@ -197,8 +198,22 @@ geforderten Testfällen:
 | V02-T09 | Maßnahme aus Bibliothek nur als Vorschlagssprache, nie als bereits durchgeführt |
 | V02-T10 | Rote unbelegte Aussage blockiert die Freigabe; manuelle Bearbeitung hebt die Blockade auf |
 
-Alle 19 Testfälle aus Version 0.1 bleiben unverändert Teil der Suite
-(Regressionsschutz) – insgesamt 29 Tests, alle grün.
+Seit PH-15 Arbeitsfassung 1.1 zusätzlich `v02_ph15_v11.test.ts` (Abschnitt 87):
+
+| Test | Inhalt |
+|---|---|
+| V02-T11 | Fristenberechnung: Start-LUV 14 Tage nach Ende Kompetenzanalyse, nicht aus Maßnahmebeginn geraten |
+| V02-T12 | Kompetenzanalyse-Plausibilität je Maßnahmeart – Hinweis statt Blockade |
+| V02-T13 | Förderziel ohne BA-Förderzielbereich → Qualitätswarnung, keine Blockade |
+| V02-T14 | Parallele BA-Förderzielbereiche gleichzeitig aktiv (nicht linear) |
+| V02-T15 | Wiederöffnung eines BA-Förderzielbereichs (`erneut_geoeffnet`) |
+| V02-T16 | Sensible Angabe (Diagnose/Medikamente) wird über die Privacy Gateway blockiert |
+| V02-T17 | Maßnahmeart BvB-Reha selbst wird NICHT blockiert (nur die sensible Angabe) |
+| V02-T18 | Teilnehmerbesprechung/Bekanntgabe wird dokumentiert und fließt in den Qualitätscheck ein |
+| V02-T19 | Fremdrückmeldung bleibt als Fremdquelle gekennzeichnet |
+
+Alle 29 Testfälle aus Version 0.1/0.2 (Arbeitsfassung 1.0) bleiben unverändert
+Teil der Suite (Regressionsschutz) – insgesamt 38 Tests, alle grün.
 
 Frontend-Build/Typecheck:
 
@@ -215,15 +230,16 @@ luv-generator/
 ├── backend/
 │   ├── src/
 │   │   ├── domain/            # Neutrales Datenmodell, deterministische Fachlogik, Kompetenzkatalog,
-│   │   │                      # Maßnahmenbibliothek, Konkretisierungsassistent, Qualitäts-/Freigabecheck
+│   │   │                      # Maßnahmenbibliothek, Konkretisierungsassistent, Qualitäts-/Freigabecheck,
+│   │   │                      # Fristenlogik (fristenLogic.ts), BA-Förderzielbereiche
 │   │   ├── privacy/           # Privacy Gateway (Allowlist, Identifikatoren, Sensitive-Scan)
 │   │   ├── ai/                # Prompt Builder, Prompt-Templates (versioniert, u. a. fact_check v2, measures v2), Claude-Client, Testmodus-Mock
 │   │   ├── validation/        # Schema-, Evidenz-, Faktenabdeckungsprüfung (heuristisch + semantisch), Request-Validierung
 │   │   ├── luv_composer/      # Abschnittsauswahl/-reihenfolge, Redundanzprüfung, Gesamtredaktion, manueller Schutz
 │   │   ├── export/            # DOCX-Export, Kopiertext
-│   │   ├── demo/              # 5 fiktive Demo-Fälle A-E (Start ×3, Verlauf, Abschluss)
-│   │   ├── web/                # Express-App, Routen (inkl. Katalog-/Qualitäts-/Freigabecheck-Routen), Session-Speicher, Logging
-│   │   └── __tests__/         # Vitest-Suite (Testfälle 1-10 + V02-T01..T10)
+│   │   ├── demo/              # 7 fiktive Demo-Fälle A-G (Start ×5, Verlauf, Abschluss)
+│   │   ├── web/                # Express-App, Routen (inkl. Katalog-/Qualitäts-/Freigabecheck-/Fristen-Routen), Session-Speicher, Logging
+│   │   └── __tests__/         # Vitest-Suite (Testfälle 1-10 + V02-T01..T19)
 │   ├── package.json / tsconfig.json / vitest.config.ts / .env.example
 └── frontend/
     ├── src/
@@ -356,6 +372,69 @@ Zielstatus).
 Version 0.2 wurde sowohl in der Vollversion (dieses Verzeichnis) als auch in
 der separat ausgelieferten Einzeldatei-Artifact-Version umgesetzt.
 
+## PH-15 Arbeitsfassung 1.1 – Ergänzungen
+
+PH-15 wurde nach Version 0.2 (Arbeitsfassung 1.0) um die **Arbeitsfassung
+1.1** aktualisiert (Grundlage: Master-Arbeitsstand V1.0, Praxistest,
+PH-16-Doppelabgleich). Diese Fassung bleibt Teil von **Version 0.2** – es
+handelt sich um eine fachliche Präzisierung/Erweiterung des bestehenden
+PH-15-Katalogs, nicht um eine neue Versionsnummer. Umgesetzt in der von
+PH-15 v1.1 (§91) vorgegebenen Reihenfolge, ebenfalls in Vollversion und
+Artifact-Version:
+
+1. **Maßnahmeart BvB/BvB-Reha** (`BaseData.massnahmeart`) – steuert
+   ausschließlich fachlich belegte Unterschiede (Kompetenzanalyse-Dauer-
+   Hinweise); keine künstliche Differenzierung ohne fachliche Grundlage.
+2. **Verbindliche LUV-Fristenlogik** (`domain/fristenLogic.ts`,
+   `GET /:id/fristen`) – Start-LUV 14 Tage nach *tatsächlichem* Ende der
+   Kompetenzanalyse (nicht aus dem Maßnahmebeginn geraten), erste
+   Verlaufs-LUV 6 Monate nach Maßnahmebeginn, weitere Verlaufs-LUV 6 Wochen
+   vor Maßnahmeende, Abschluss-LUV am geplanten Maßnahmeende. Zusätzlich
+   eine Kompetenzanalyse-Dauer-Plausibilität je Maßnahmeart (Hinweis, keine
+   Blockade).
+3. **BA-Förderzielbereiche** als eigene, von den sechs internen
+   Kompetenzdomänen technisch getrennte Ebene (`BAFoerderzielbereich`,
+   5 Bereiche) – Unterkompetenzen und Förderziele können ihnen zugeordnet
+   werden; ein bestätigtes Ziel ohne Zuordnung löst eine Qualitätswarnung
+   aus (PH-15 v1.1 §48), keine Blockade. Mehrere Bereiche können parallel
+   aktiv sein (`foerderzielbereichTracking`, Status
+   begonnen/aktiv/abgeschlossen/erneut geöffnet – PH-15 v1.1 §84).
+4. **Zusätzliche Schlüsselkompetenzen** im Kompetenzkatalog ergänzt
+   (lebenspraktische Fertigkeiten, interkulturelle Kompetenzen, grüne
+   Kompetenzen, Diversitätskompetenzen, Selbstlernkompetenz) sowie fehlende
+   Katalogeinträge aus PH-15 v1.1 §10-15 nachgezogen.
+5. **Qualitätscheck erweitert**: Maßnahmeart, offene Warnungen/Widersprüche
+   in KI-Abschnitten, Teilnehmerbesprechung, Stand der BA-Förderzielbereiche
+   (Verlaufs-/Abschluss-LUV) als zusätzliche, nicht blockierende Prüfpunkte.
+6. **Strukturierte Ausgangslage und berufliche Orientierung**: Schulabschluss
+   und berufliche Vorerfahrung als feste Auswahllisten statt Freitext,
+   strukturierter beruflicher Orientierungsstatus, Berufsfelder mit
+   Orientierungspraktikum-Kennzeichnung, Quelle und zentraler Erkenntnis.
+7. **Maßnahmenbibliothek**: zusätzliche (optionale) Zuordnung von Maßnahmen
+   zu BA-Förderzielbereichen.
+8. **Teilnehmerbesprechung/Bekanntgabe** (`Teilnehmerbesprechung`,
+   `PUT /:id/teilnehmerbesprechung`) – besprochen Ja/Nein, Datum,
+   Mehrfertigung ausgehändigt, „Besprechung nicht möglich" mit Grund.
+9. **Freigabecheck erweitert** um `openQualityWarnings` (nicht blockierende
+   Zusatzhinweise aus dem Qualitätscheck, inkl. Maßnahmeart/LUV-Art/
+   Teilnehmerbesprechung) – die technische MUSS-Blockade roter Abschnitte
+   selbst bleibt unverändert.
+10. **Demo-Fälle erweitert** von A–E auf **A–G** (PH-15 v1.1 §86): Demo F
+    (BvB, mehrere gleichzeitig aktive BA-Förderzielbereiche), Demo G
+    (BvB-Reha mit sensibler Angabe, die über die bestehende Privacy Gateway
+    blockiert wird, ohne dass die Maßnahmeart BvB-Reha selbst blockiert
+    wird – PH-15 v1.1 §73).
+11. **Tests**: 9 neue Testfälle V02-T11–T19 plus vollständige
+    Regressionssuite aus Version 0.1/0.2 (insgesamt 38 Tests).
+
+**Nicht umgesetzt** (PH-15 v1.1 §92, bewusst außerhalb des Umfangs):
+Produktionsbackend, produktive JobB-Nutzerverwaltung, direkte BA-/EMAW-
+Schnittstelle, offizielles LUV-PDF, XML-Übertragung, Teilnehmerhistorie,
+Statistik/Dashboard, E-Mail, digitale Signatur, Langzeitarchiv,
+vollständige Förderplanung, Förderziel-Zertifikatsmodul. Ebenso nicht
+umgesetzt: ein eigenständiger, produktiver BvB-Förderzielnachweis (§85,
+ausdrücklich "nicht in den Kern des LUV-Generators integrieren").
+
 ## Bekannte offene Punkte
 
 Alle mit `TODO: fachlich abgleichen` im Code markierten Stellen sind bewusst
@@ -398,6 +477,25 @@ abgestimmt werden. Insbesondere:
   `domain/releaseCheck.ts`).
 - **Session-Speicherung** ist rein in-memory (Abschnitt 34); bei Neustart des
   Backends gehen alle Fälle verloren (in einem TESTSYSTEM gewollt).
+- **Fristenlogik** (`domain/fristenLogic.ts`): "letzter Tag der Teilnahme"
+  für die Abschluss-LUV-Frist wird als geplantes Maßnahmeende abgebildet;
+  bei einem tatsächlich abweichenden (z. B. vorzeitigen) Austritt muss dies
+  derzeit manuell berücksichtigt werden (PH-15 v1.1 §5).
+- **BA-Förderzielbereiche** (`domain/types.ts: BAFoerderzielbereich`,
+  `domain/labels.ts: BA_FOERDERZIELBEREICH_LABELS`): Bezeichnungen sind
+  Arbeitsformulierungen aus PH-15 v1.1 §8, keine offiziellen BA-Bezeichnungen
+  oder Feldnummern.
+- **Zuordnung der "zusätzlichen Schlüsselkompetenzen"** (lebenspraktische
+  Fertigkeiten, interkulturelle/grüne/Diversitätskompetenzen) zu einem der
+  sechs Hauptbereiche im Kompetenzkatalog ist eine plausible Arbeitsannahme
+  (PH-15 v1.1 nennt sie nicht eindeutig einem Bereich zugeordnet) und noch
+  fachlich zu bestätigen (`domain/competenceCatalog.ts`).
+- **Kompetenzanalyse-Dauer-Regelwerte** (BvB 3–5 Wochen, BvB-Reha 4–8 Wochen,
+  `domain/fristenLogic.ts: KOMPETENZANALYSE_REGELDAUER`) sind reine
+  Hinweislogik gemäß PH-15 v1.1 §6, keine technische Blockade.
+- **Teilnehmerbesprechung/Bekanntgabe** (§65): welche der erfassten Angaben
+  in das offizielle Muster-LUV gehören und welche nur interne
+  Prozessdokumentation sind, ist offen.
 
 ## Vorschläge für Version 0.3
 

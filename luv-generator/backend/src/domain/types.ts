@@ -6,6 +6,40 @@
 
 export type LuvArt = "start" | "verlauf" | "abschluss";
 
+/**
+ * Massnahmeart (Version 0.2 / PH-15 v1.1 Abschnitt 3). Steuert AUSSCHLIESSLICH
+ * fachlich belegte Unterschiede (Kompetenzanalyse-Dauer-Hinweise, spaetere
+ * Formular-/Template-Zuordnung). Keine kuenstlichen Unterschiede ohne fachliche
+ * Grundlage (PH-15 v1.1 Abschnitt 3, MUSS).
+ */
+export const MASSNAHMEART_VALUES = ["bvb", "bvb_reha"] as const;
+export type Massnahmeart = (typeof MASSNAHMEART_VALUES)[number];
+
+/**
+ * Offizielle BA-Foerderzielbereiche (PH-15 v1.1 Abschnitt 8), technisch getrennt
+ * von den sechs internen Kompetenzdomaenen (Abschnitt 9: Zielarchitektur
+ * Beobachtung -> Unterkompetenz -> Kompetenzdomaene -> BA-Foerderzielbereich ->
+ * bestaetigter Foerderbedarf -> Foerderziel -> LUV-Text).
+ * TODO: fachlich abgleichen - exakte offizielle Bezeichnungen/Feldnummern der BA
+ * liegen nicht vor, Labels sind Arbeitsformulierungen aus PH-15 v1.1.
+ */
+export const BA_FOERDERZIELBEREICHE = [
+  "grundkompetenzen",
+  "berufsorientierung_berufswahl",
+  "berufliche_grundfaehigkeiten",
+  "berufsspezifische_qualifizierung",
+  "erwerb_hauptschulabschluss"
+] as const;
+export type BAFoerderzielbereich = (typeof BA_FOERDERZIELBEREICHE)[number];
+
+/** PH-15 v1.1 Abschnitt 84: Foerderzielbereiche laufen parallel, nicht linear. */
+export type FoerderzielbereichStatus = "begonnen" | "aktiv" | "abgeschlossen" | "erneut_geoeffnet";
+
+export interface FoerderzielbereichTracking {
+  bereich: BAFoerderzielbereich;
+  status: FoerderzielbereichStatus;
+}
+
 /** Erlaubte Bewertungswerte fuer Kompetenzen (fachlich, erscheinen so im LUV-Text). */
 export type CompetenceRating =
   | "staerke"
@@ -86,6 +120,11 @@ export interface SubCompetence {
    * den LUV-Text verlaengern").
    */
   relevantForLuv: boolean;
+  /**
+   * Zuordnung zu einem oder mehreren BA-Foerderzielbereichen (PH-15 v1.1 Abschnitt 8).
+   * Rein fachliche Zuordnung durch die Koordination, keine automatische Ableitung.
+   */
+  foerderzielbereiche?: BAFoerderzielbereich[];
 }
 
 export type SupportAreaStatus = "pending" | "confirmed" | "rejected";
@@ -135,15 +174,48 @@ export interface SupportGoal {
   measureSource?: MeasureSource;
   /** Nur bei Verlaufs-/Abschluss-LUV relevant; von Claude vorschlagbar, nie verbindlich gesetzt. */
   completionStatus?: GoalCompletionStatus;
+  /**
+   * BA-Foerderzielbereich (PH-15 v1.1 Abschnitt 47, 48). Ein Ziel ohne zugeordneten,
+   * relevanten Foerderzielbereich loest eine Qualitaetswarnung aus (Abschnitt 48),
+   * blockiert aber nichts.
+   */
+  foerderzielbereich?: BAFoerderzielbereich;
   status: GoalStatus;
   manualOverride: boolean;
 }
 
+/** PH-15 v1.1 Abschnitt 38 (MUSS): strukturierter beruflicher Orientierungsstatus. */
+export const ORIENTIERUNGSSTATUS_OPTIONS = [
+  "konkret",
+  "grundsaetzlich_vorhanden",
+  "unsicher",
+  "weitere_orientierung_erforderlich"
+] as const;
+export type Orientierungsstatus = (typeof ORIENTIERUNGSSTATUS_OPTIONS)[number];
+
+/** PH-15 v1.1 Abschnitt 39 (SOLL): ein einzelnes erprobtes/analysiertes Berufsfeld. */
+export interface BerufsfeldEintrag {
+  berufsfeld: string;
+  /** true = im Rahmen eines Orientierungspraktikums erprobt. */
+  orientierungspraktikum: boolean;
+  zentraleErkenntnis: string;
+  quelle: EvidenceSource | "";
+}
+
 export interface CareerInfo {
   berufswunsch: string;
+  /** PH-15 v1.1 Abschnitt 38: Berufswunsch vorhanden / gefestigt / praktisch erprobt. */
+  berufswunschVorhanden: boolean | null;
+  berufswunschGefestigt: boolean | null;
+  berufswunschPraktischErprobt: boolean | null;
   alternativen: string;
-  orientierungsstatus: string;
-  erprobteBerufsfelder: string;
+  orientierungsstatus: Orientierungsstatus | "";
+  weitereOrientierungErforderlich: boolean;
+  /**
+   * Berufsfeld 1-3 + ggf. weitere (PH-15 v1.1 Abschnitt 39: "flexibel wegen
+   * Losvorgaben" - daher als Liste statt starrer Feldanzahl modelliert).
+   */
+  berufsfelder: BerufsfeldEintrag[];
   praktikumserkenntnisse: string;
 }
 
@@ -157,18 +229,72 @@ export interface BaseData {
   teilnehmerName: string;
   geburtsdatum: string | null;
   massnahme: string;
+  /** BvB oder BvB-Reha (PH-15 v1.1 Abschnitt 3, MUSS). */
+  massnahmeart: Massnahmeart;
   eintrittsdatum: string;
+  /**
+   * Ende der Kompetenzanalyse - Grundlage fuer die Start-LUV-Frist
+   * (PH-15 v1.1 Abschnitt 5: "muss das tatsaechliche Ende der Kompetenzanalyse
+   * beruecksichtigen", nicht pauschal aus Massnahmebeginn ableitbar).
+   */
+  kompetenzanalyseEnde: string | null;
+  /**
+   * Geplantes Massnahmeende - Grundlage fuer die Fristen der weiteren Verlaufs-LUV
+   * (6 Wochen vorher) und der Abschluss-LUV (PH-15 v1.1 Abschnitt 5).
+   * TODO: fachlich abgleichen - bei vorzeitigem/abweichendem tatsaechlichen Austritt
+   * muss der tatsaechliche letzte Teilnahmetag manuell beruecksichtigt werden.
+   */
+  massnahmeEndeGeplant: string | null;
   luvArt: LuvArt;
   beurteilungszeitraumVon: string;
   beurteilungszeitraumBis: string;
   koordination: string;
 }
 
+/** PH-15 v1.1 Abschnitt 36: Schulabschluss als strukturierte Auswahl. */
+export const SCHULABSCHLUSS_OPTIONS = [
+  "kein_schulabschluss",
+  "esa",
+  "msa",
+  "fachhochschulreife",
+  "abitur",
+  "sonstiger",
+  "noch_schulpflichtig",
+  "nicht_bekannt"
+] as const;
+export type Schulabschluss = (typeof SCHULABSCHLUSS_OPTIONS)[number];
+
+/** PH-15 v1.1 Abschnitt 37: berufliche Vorerfahrung als Mehrfachauswahl. */
+export const BERUFLICHE_VORERFAHRUNG_OPTIONS = [
+  "keine",
+  "praktikum",
+  "mehrere_praktika",
+  "ausbildung_begonnen",
+  "ausbildung_abgebrochen",
+  "beschaeftigung",
+  "vorherige_massnahme",
+  "sonstige"
+] as const;
+export type BeruflicheVorerfahrung = (typeof BERUFLICHE_VORERFAHRUNG_OPTIONS)[number];
+
 export interface StartingSituation {
-  schulabschluss: string;
-  beruflicheVorerfahrung: string;
+  schulabschluss: Schulabschluss;
+  beruflicheVorerfahrung: BeruflicheVorerfahrung[];
   bisherigePraktika: string;
   ausgangssituation: string;
+}
+
+/**
+ * Teilnehmerbesprechung/Bekanntgabe (PH-15 v1.1 Abschnitt 65, MUSS).
+ * TODO: fachlich abgleichen - welche dieser Angaben in das offizielle
+ * Muster-LUV gehoeren und welche nur interne Prozessdokumentation sind.
+ */
+export interface Teilnehmerbesprechung {
+  besprochen: boolean | null;
+  datum: string | null;
+  mehrfertigungAusgehaendigt: boolean | null;
+  besprechungNichtMoeglich: boolean;
+  hinweisGrund: string;
 }
 
 /** Vorheriger LUV-Text, wie er fuer Verlaufs-/Abschluss-LUV eingefuegt werden kann. */
@@ -283,6 +409,8 @@ export interface MeasureLibraryEntry {
   /** Fachliche Untergruppe, z.B. "Mathematik" (informativ, optional). */
   group?: string;
   text: string;
+  /** Zusaetzliche Filterung/Zuordnung nach BA-Foerderzielbereich (PH-15 v1.1 Abschnitt 42, SOLL). */
+  foerderzielbereiche?: BAFoerderzielbereich[];
 }
 
 export interface CaseRecord {
@@ -299,6 +427,12 @@ export interface CaseRecord {
   previousLuv: PreviousLuvInput | null;
   comparisonClaims: ComparisonClaim[];
   sections: LuvSection[];
+  /**
+   * Parallel aktive/abgeschlossene BA-Foerderzielbereiche (PH-15 v1.1 Abschnitt 84).
+   * Nicht linear modelliert - mehrere Bereiche koennen gleichzeitig aktiv sein.
+   */
+  foerderzielbereichTracking: FoerderzielbereichTracking[];
+  teilnehmerbesprechung: Teilnehmerbesprechung;
   /** Muss durch aktive Bestaetigung der Koordination gesetzt werden. Claude darf dies nie setzen. */
   approvedForExport: boolean;
   approvalTimestamp: string | null;
