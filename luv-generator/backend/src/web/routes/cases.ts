@@ -7,6 +7,7 @@ import {
   ApprovalSchema,
   BaseDataSchema,
   CareerInfoSchema,
+  ClarificationCheckSchema,
   ComparisonClaimConfirmSchema,
   ComparisonClaimLinkSchema,
   EvidenceItemInputSchema,
@@ -24,6 +25,9 @@ import { compareRatings } from "../../domain/comparisonLogic.js";
 import { ensureSectionSkeleton, setSectionText } from "../../luv_composer/composer.js";
 import { findRedundancies, checkSimilarityToPreviousText } from "../../luv_composer/redundancyCheck.js";
 import { renderSupportGoalsSectionText } from "../../luv_composer/renderGoals.js";
+import { runQualityCheck } from "../../domain/qualityCheck.js";
+import { runReleaseCheck } from "../../domain/releaseCheck.js";
+import { checkForClarification } from "../../domain/clarificationAssistant.js";
 
 export const casesRouter = Router();
 
@@ -315,12 +319,51 @@ casesRouter.get(
   })
 );
 
+casesRouter.get(
+  "/:id/quality-check",
+  asyncHandler(async (req, res) => {
+    const record = getCase(req.params.id);
+    if (!record) throw notFoundCase();
+    res.json(runQualityCheck(record));
+  })
+);
+
+casesRouter.get(
+  "/:id/release-check",
+  asyncHandler(async (req, res) => {
+    const record = getCase(req.params.id);
+    if (!record) throw notFoundCase();
+    res.json(runReleaseCheck(record));
+  })
+);
+
+casesRouter.post(
+  "/:id/clarification-check",
+  asyncHandler(async (req, res) => {
+    const { text } = ClarificationCheckSchema.parse(req.body);
+    res.json(checkForClarification(text));
+  })
+);
+
 casesRouter.post(
   "/:id/approve",
   asyncHandler(async (req, res) => {
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
     ApprovalSchema.parse(req.body);
+
+    // Version 0.2 (PH-15 Abschnitt 43, MUSS): rote, nicht manuell geprüfte Abschnitte
+    // duerfen nicht freigegeben werden. Diese Regel wird hier technisch durchgesetzt,
+    // nicht nur im Frontend angezeigt.
+    const releaseCheck = runReleaseCheck(record);
+    if (releaseCheck.blocked) {
+      throw new ApiError(
+        409,
+        "release_check_blocked",
+        "Freigabe blockiert: es gibt Abschnitte mit unbelegten oder ungeprüften KI-Aussagen, die noch nicht fachlich bearbeitet wurden."
+      );
+    }
+
     record.approvedForExport = true;
     record.approvalTimestamp = new Date().toISOString();
     putCase(record);

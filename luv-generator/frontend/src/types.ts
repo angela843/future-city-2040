@@ -79,6 +79,8 @@ export interface SubCompetence {
   rating: CompetenceRating;
   observationNotes: string;
   evidenceIds: string[];
+  catalogId?: string;
+  relevantForLuv: boolean;
 }
 
 export type SupportAreaStatus = "pending" | "confirmed" | "rejected";
@@ -94,6 +96,26 @@ export interface SupportAreaCandidate {
 
 export type GoalStatus = "vorschlag" | "uebernommen" | "bearbeitet" | "neu_formuliert" | "verworfen";
 
+/** A = aktuell zentral, B = relevant, C = beobachten. Erscheint NIE im LUV-Text. */
+export type GoalPriority = "A" | "B" | "C";
+export type MeasureSource = "bibliothek" | "ki_vorschlag" | "manuell";
+export type GoalCompletionStatus =
+  | "erreicht"
+  | "teilweise_erreicht"
+  | "weiterhin_aktuell"
+  | "angepasst"
+  | "nicht_erreicht"
+  | "nicht_mehr_relevant";
+
+export const COMPLETION_STATUS_LABELS: Record<GoalCompletionStatus, string> = {
+  erreicht: "Erreicht",
+  teilweise_erreicht: "Teilweise erreicht",
+  weiterhin_aktuell: "Weiterhin aktuell",
+  angepasst: "Angepasst / weiterentwickelt",
+  nicht_erreicht: "Nicht erreicht",
+  nicht_mehr_relevant: "Nicht mehr relevant"
+};
+
 export interface SupportGoal {
   id: string;
   supportAreaId: string;
@@ -102,7 +124,9 @@ export interface SupportGoal {
   ziel: string;
   massnahme: string;
   ueberpruefungskriterium: string;
-  prioritaet?: "hoch" | "mittel" | "niedrig";
+  prioritaet?: GoalPriority;
+  measureSource?: MeasureSource;
+  completionStatus?: GoalCompletionStatus;
   status: GoalStatus;
   manualOverride: boolean;
 }
@@ -188,9 +212,74 @@ export type SectionKey =
   | "overall_assessment"
   | "perspective";
 
+export type EvidenceStatus = "covered" | "partially_covered" | "unsupported" | "needs_review";
+
+export const EVIDENCE_STATUS_LABELS: Record<EvidenceStatus, string> = {
+  covered: "Belege gedeckt",
+  partially_covered: "Teilweise gedeckt",
+  unsupported: "Nicht ausreichend belegt",
+  needs_review: "Fachliche Prüfung erforderlich"
+};
+
+export interface FactClaim {
+  text: string;
+  status: EvidenceStatus;
+  evidenceIds: string[];
+}
+
 export interface FactCheckResult {
-  status: "covered" | "partially_covered" | "unsupported";
+  status: EvidenceStatus;
   details: string[];
+  claims?: FactClaim[];
+  method: "heuristic" | "semantic";
+}
+
+export interface QualityCheckItem {
+  key: string;
+  label: string;
+  ok: boolean;
+  hint?: string;
+}
+
+export interface QualityCheckResult {
+  items: QualityCheckItem[];
+  warningCount: number;
+}
+
+export interface ReleaseCheckBlockingSection {
+  key: SectionKey;
+  title: string;
+  reason: string;
+}
+
+export interface ReleaseCheckResult {
+  blocked: boolean;
+  blockingSections: ReleaseCheckBlockingSection[];
+  unresolvedSupportGoals: number;
+  unresolvedSupportAreas: number;
+  openWarnings: number;
+}
+
+export interface CatalogEntry {
+  id: string;
+  label: string;
+  group?: string;
+}
+
+export type CompetenceCatalog = Record<CompetenceArea, CatalogEntry[]>;
+
+export interface MeasureLibraryEntry {
+  id: string;
+  area: CompetenceArea;
+  group?: string;
+  text: string;
+}
+
+export interface ClarificationCheckResult {
+  needsClarification: boolean;
+  matchedTerms: string[];
+  message?: string;
+  questions: string[];
 }
 
 export interface LuvSection {

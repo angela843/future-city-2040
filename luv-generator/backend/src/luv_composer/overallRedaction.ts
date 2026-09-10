@@ -9,7 +9,7 @@
 import { CaseRecord, LuvSection } from "../domain/types.js";
 import { overallRedactionPayload } from "../ai/payloadBuilders.js";
 import { runAiTask } from "../ai/aiService.js";
-import { classifyFactCoverage } from "../validation/evidenceValidation.js";
+import { runSemanticFactCheck } from "../validation/semanticFactCheck.js";
 
 export interface OverallRedactionOutcome {
   sections: LuvSection[];
@@ -63,19 +63,30 @@ export async function applyOverallRedaction(caseRecord: CaseRecord): Promise<Ove
   const appliedKeys: string[] = [];
   const rejectedKeys: string[] = [];
 
-  const nextSections = caseRecord.sections.map((section) => {
-    if (section.manualOverride) return section;
+  const nextSections: LuvSection[] = [];
+  for (const section of caseRecord.sections) {
+    if (section.manualOverride) {
+      nextSections.push(section);
+      continue;
+    }
     const redactedText = redactedByKey.get(section.key);
-    if (!redactedText || redactedText.trim().length === 0) return section;
+    if (!redactedText || redactedText.trim().length === 0) {
+      nextSections.push(section);
+      continue;
+    }
 
-    const coverage = classifyFactCoverage(redactedText, [section.text]);
+    // Erneute Faktenpruefung nach der sprachlichen Ueberarbeitung (Version 0.2,
+    // PH-15 Abschnitt 42: "Nach Kuerzung erneute Evidenzpruefung" - gilt analog fuer
+    // jede nachtraegliche sprachliche Veraenderung durch Claude).
+    const coverage = await runSemanticFactCheck(caseRecord.id, section.key, redactedText, caseRecord.evidence, [section.text]);
     if (coverage.status === "unsupported") {
       rejectedKeys.push(section.key);
-      return section;
+      nextSections.push(section);
+      continue;
     }
     appliedKeys.push(section.key);
-    return { ...section, text: redactedText, factCheck: coverage };
-  });
+    nextSections.push({ ...section, text: redactedText, factCheck: coverage });
+  }
 
   return { sections: nextSections, appliedKeys, rejectedKeys, aiUnavailable: false };
 }

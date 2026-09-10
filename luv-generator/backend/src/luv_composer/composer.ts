@@ -68,7 +68,12 @@ export function setSectionText(
     text,
     evidenceIds,
     warnings,
-    manualOverride: options.manualEdit ? true : current.manualOverride
+    manualOverride: options.manualEdit ? true : current.manualOverride,
+    // Version 0.2 (PH-15 Abschnitt 43): eine manuelle Bearbeitung ist die "aktive
+    // fachliche Bearbeitung", die eine rote (nicht gedeckte) Kennzeichnung aufhebt -
+    // der vorherige (jetzt veraltete) Faktencheck bezog sich auf den KI-Text, nicht
+    // auf den neuen, von der Koordination verantworteten Text.
+    factCheck: options.manualEdit ? undefined : current.factCheck
   };
 
   const next = [...sections];

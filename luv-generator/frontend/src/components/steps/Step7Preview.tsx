@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, downloadDocx, fetchText } from "../../api/client.js";
-import { CaseRecord, LuvSection } from "../../types.js";
+import {
+  CaseRecord,
+  EVIDENCE_STATUS_LABELS,
+  LuvSection,
+  QualityCheckResult,
+  ReleaseCheckResult
+} from "../../types.js";
 
 type GenerateResult =
   | { kind: "ok"; text: string; evidenceIds: string[]; warnings: string[] }
@@ -35,8 +41,26 @@ export function Step7Preview({
   const [approving, setApproving] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
   const [redacting, setRedacting] = useState(false);
+  const [qualityCheck, setQualityCheck] = useState<QualityCheckResult | null>(null);
+  const [releaseCheck, setReleaseCheck] = useState<ReleaseCheckResult | null>(null);
+  const [showQualityDetails, setShowQualityDetails] = useState(false);
+  const [groundingOpenFor, setGroundingOpenFor] = useState<string | null>(null);
 
   const visibleSections = record.sections.filter((s) => s.text.trim().length > 0 || true);
+
+  async function loadChecks() {
+    const [qc, rc] = await Promise.all([
+      api.get<QualityCheckResult>(`/api/cases/${record.id}/quality-check`),
+      api.get<ReleaseCheckResult>(`/api/cases/${record.id}/release-check`)
+    ]);
+    setQualityCheck(qc);
+    setReleaseCheck(rc);
+  }
+
+  useEffect(() => {
+    loadChecks().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record.id, record.sections, record.supportGoals, record.supportAreaCandidates]);
 
   async function refresh() {
     const updated = await api.get<CaseRecord>(`/api/cases/${record.id}`);
@@ -96,6 +120,7 @@ export function Step7Preview({
       onUpdated({ ...record, approvedForExport: res.approvedForExport, approvalTimestamp: res.approvalTimestamp });
     } catch (err) {
       setApproveError(err instanceof Error ? err.message : "Freigabe fehlgeschlagen.");
+      await loadChecks();
     } finally {
       setApproving(false);
     }
@@ -109,6 +134,30 @@ export function Step7Preview({
     <div className="card">
       <h2>Schritt 7 – LUV-Vorschau</h2>
       {!record.approvedForExport && <div className="draft-banner">ENTWURF – fachliche Prüfung erforderlich</div>}
+
+      {qualityCheck && (
+        <div className="section-block">
+          <div className="row" style={{ justifyContent: "space-between", marginTop: 0 }}>
+            <h3 style={{ margin: 0 }}>Qualitäts- und Vollständigkeitscheck</h3>
+            <button type="button" onClick={() => setShowQualityDetails((v) => !v)}>
+              {showQualityDetails ? "Ausblenden" : `Anzeigen (${qualityCheck.warningCount} Hinweis(e))`}
+            </button>
+          </div>
+          <p className="muted" style={{ marginTop: 4 }}>
+            Fehlende Angaben blockieren die Erstellung nicht. Nichts wird automatisch durch KI ergänzt.
+          </p>
+          {showQualityDetails && (
+            <div className="quality-check">
+              {qualityCheck.items.map((item) => (
+                <div key={item.key} className={`item ${item.ok ? "ok" : "warn"}`}>
+                  <span className="mark">{item.ok ? "✓" : "⚠"}</span>
+                  <span>{item.hint ?? item.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="button-row">
         <button type="button" onClick={runRedundancyCheck}>
@@ -129,66 +178,136 @@ export function Step7Preview({
         </div>
       )}
 
-      {visibleSections.map((section) => (
-        <div key={section.key} className="section-block">
-          <h3>
-            <span>
-              {section.title}
-              {section.manualOverride && <span className="badge manual">manuell bearbeitet – geschützt</span>}
-              {section.factCheck && (
-                <span className={`badge ${section.factCheck.status}`}>
-                  {section.factCheck.status === "covered"
-                    ? "Belege gedeckt"
-                    : section.factCheck.status === "partially_covered"
-                    ? "teilweise gedeckt"
-                    : "nicht ausreichend belegt"}
-                </span>
-              )}
-            </span>
-            <span className="button-row">
-              <button type="button" onClick={() => generateSection(section.key)} disabled={busySection === section.key}>
-                {busySection === section.key ? "…" : "KI-Vorschlag"}
-              </button>
-              <button type="button" onClick={() => copySection(section.key)}>
-                Kopieren
-              </button>
-            </span>
-          </h3>
+      {visibleSections.map((section) => {
+        const groundingOpen = groundingOpenFor === section.key;
+        const sectionEvidence = record.evidence.filter((e) => section.evidenceIds.includes(e.id));
+        return (
+          <div key={section.key} className="section-block">
+            <h3>
+              <span>
+                {section.title}
+                {section.manualOverride && <span className="badge manual">manuell bearbeitet – geschützt</span>}
+                {section.factCheck && (
+                  <span className={`badge ${section.factCheck.status}`}>{EVIDENCE_STATUS_LABELS[section.factCheck.status]}</span>
+                )}
+              </span>
+              <span className="button-row">
+                <button type="button" onClick={() => generateSection(section.key)} disabled={busySection === section.key}>
+                  {busySection === section.key ? "…" : "KI-Vorschlag"}
+                </button>
+                <button type="button" onClick={() => copySection(section.key)}>
+                  Kopieren
+                </button>
+                {section.factCheck && (
+                  <button type="button" onClick={() => setGroundingOpenFor(groundingOpen ? null : section.key)}>
+                    {groundingOpen ? "Grundlage ausblenden" : "Grundlage anzeigen"}
+                  </button>
+                )}
+              </span>
+            </h3>
 
-          <textarea
-            value={section.text}
-            rows={5}
-            onChange={(e) => {
-              const text = e.target.value;
-              onUpdated({
-                ...record,
-                sections: record.sections.map((s) => (s.key === section.key ? { ...s, text } : s))
-              });
-            }}
-            onBlur={(e) => saveManualEdit(section.key, e.target.value)}
-          />
+            <textarea
+              value={section.text}
+              rows={5}
+              onChange={(e) => {
+                const text = e.target.value;
+                onUpdated({
+                  ...record,
+                  sections: record.sections.map((s) => (s.key === section.key ? { ...s, text } : s))
+                });
+              }}
+              onBlur={(e) => saveManualEdit(section.key, e.target.value)}
+            />
 
-          {section.warnings.length > 0 && (
-            <div className="notice warning">{section.warnings.join(" ")}</div>
-          )}
+            {groundingOpen && section.factCheck && (
+              <div className="ai-box">
+                <div>
+                  Prüfmethode: {section.factCheck.method === "semantic" ? "semantische KI-Prüfung" : "technische Zusatzprüfung (Wortabgleich)"}
+                </div>
+                {section.factCheck.claims && section.factCheck.claims.length > 0 ? (
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                    {section.factCheck.claims.map((claim, idx) => (
+                      <li key={idx}>
+                        <span className={`badge ${claim.status}`}>{EVIDENCE_STATUS_LABELS[claim.status]}</span> „{claim.text}“
+                        {claim.evidenceIds.length > 0 && (
+                          <>
+                            {" "}
+                            (
+                            {claim.evidenceIds.map((id) => (
+                              <code key={id} className="idmono">
+                                {id}
+                              </code>
+                            ))}
+                            )
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="muted">Keine aussagebasierte Aufschlüsselung verfügbar.</div>
+                )}
+                {sectionEvidence.length > 0 && (
+                  <>
+                    <div style={{ marginTop: 8 }}>Verwendete Belege:</div>
+                    <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                      {sectionEvidence.map((e) => (
+                        <li key={e.id}>
+                          <code className="idmono">{e.id}</code> – {e.note}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
 
-          {genResult[section.key]?.kind === "insufficient_data" && (
-            <div className="notice warning">
-              Angaben reichen nicht aus. {(genResult[section.key] as { questions: string[] }).questions.join(" ")}
+            {section.warnings.length > 0 && <div className="notice warning">{section.warnings.join(" ")}</div>}
+
+            {genResult[section.key]?.kind === "insufficient_data" && (
+              <div className="notice warning">
+                Angaben reichen nicht aus. {(genResult[section.key] as { questions: string[] }).questions.join(" ")}
+              </div>
+            )}
+            {genResult[section.key]?.kind === "conflict" && (
+              <div className="notice error">
+                Widersprüchliche Angaben: {(genResult[section.key] as { conflicts: string[] }).conflicts.join(" ")}
+              </div>
+            )}
+            {genResult[section.key]?.kind === "blocked_privacy" && (
+              <div className="notice error">
+                Datenschutzprüfung erforderlich: {(genResult[section.key] as { reason: string }).reason}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <div className="section-block">
+        <h3>Freigabecheck</h3>
+        {releaseCheck && releaseCheck.blocked ? (
+          <div className="notice error">
+            Freigabe aktuell blockiert: {releaseCheck.blockingSections.length} Abschnitt(e) sind noch nicht
+            ausreichend belegt und wurden noch nicht manuell geprüft.
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+              {releaseCheck.blockingSections.map((s) => (
+                <li key={s.key}>
+                  {s.title}: {s.reason}
+                </li>
+              ))}
+            </ul>
+            Bearbeiten Sie den Abschnitt manuell (dies hebt die rote Kennzeichnung auf) oder lassen Sie ihn erneut
+            prüfen.
+          </div>
+        ) : (
+          releaseCheck && (
+            <div className="notice info">
+              Keine offenen roten Abschnitte. {releaseCheck.unresolvedSupportAreas > 0 && `${releaseCheck.unresolvedSupportAreas} Förderbereich(e) noch nicht geprüft. `}
+              {releaseCheck.unresolvedSupportGoals > 0 && `${releaseCheck.unresolvedSupportGoals} Förderzielvorschlag/-vorschläge noch nicht bearbeitet.`}
             </div>
-          )}
-          {genResult[section.key]?.kind === "conflict" && (
-            <div className="notice error">
-              Widersprüchliche Angaben: {(genResult[section.key] as { conflicts: string[] }).conflicts.join(" ")}
-            </div>
-          )}
-          {genResult[section.key]?.kind === "blocked_privacy" && (
-            <div className="notice error">
-              Datenschutzprüfung erforderlich: {(genResult[section.key] as { reason: string }).reason}
-            </div>
-          )}
-        </div>
-      ))}
+          )
+        )}
+      </div>
 
       <div className="section-block">
         <h3>Freigabe</h3>
@@ -206,7 +325,7 @@ export function Step7Preview({
           <button
             type="button"
             className="primary"
-            disabled={!checkboxChecked || record.approvedForExport || approving}
+            disabled={!checkboxChecked || record.approvedForExport || approving || !!releaseCheck?.blocked}
             onClick={approve}
           >
             {record.approvedForExport ? "Bereits freigegeben" : approving ? "Wird freigegeben…" : "Fachlich freigeben"}

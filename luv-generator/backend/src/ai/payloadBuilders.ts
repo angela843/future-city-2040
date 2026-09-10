@@ -60,14 +60,19 @@ export function supportGoalsPayload(caseRecord: CaseRecord, confirmedAreas: Supp
   };
 }
 
-export function measuresPayload(caseRecord: CaseRecord, confirmedGoals: SupportGoal[]) {
+export function measuresPayload(
+  caseRecord: CaseRecord,
+  confirmedGoals: SupportGoal[],
+  libraryMeasures: { text: string; group?: string }[] = []
+) {
   return {
     luv_art: caseRecord.baseData.luvArt,
     confirmed_goals: confirmedGoals.map((g) => ({
       bereich: g.bereich,
       ausgangslage: g.ausgangslage,
       ziel: g.ziel
-    }))
+    })),
+    library_measures: libraryMeasures
   };
 }
 
@@ -94,6 +99,11 @@ export function overallRedactionPayload(caseRecord: CaseRecord, sections: LuvSec
   };
 }
 
-export function factCheckPayload(sectionKey: string, text: string, availableEvidenceIds: string[]) {
-  return { section_key: sectionKey, text, available_evidence_ids: availableEvidenceIds };
+export function factCheckPayload(sectionKey: string, text: string, availableEvidence: EvidenceItem[]) {
+  return {
+    section_key: sectionKey,
+    text,
+    available_evidence_ids: availableEvidence.map((e) => e.id),
+    available_evidence: availableEvidence.map((e) => ({ id: e.id, note: e.note }))
+  };
 }

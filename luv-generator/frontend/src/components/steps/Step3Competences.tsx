@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../api/client.js";
 import {
   AREA_LABELS,
   CaseRecord,
+  CatalogEntry,
+  ClarificationCheckResult,
   CompetenceArea,
+  CompetenceCatalog,
   CompetenceRating,
   EvidenceItem,
   EvidenceSource,
@@ -26,11 +29,13 @@ type StructureResult =
 
 const emptyForm = () => ({
   id: undefined as string | undefined,
+  catalogId: undefined as string | undefined,
   label: "",
   rating: "nicht_erhoben" as CompetenceRating,
   observationNotes: "",
   source: "beobachtung" as EvidenceSource,
-  evidenceIds: [] as string[]
+  evidenceIds: [] as string[],
+  relevantForLuv: true
 });
 
 export function Step3Competences({
@@ -49,19 +54,47 @@ export function Step3Competences({
   const [saving, setSaving] = useState(false);
   const [structureResult, setStructureResult] = useState<StructureResult | null>(null);
   const [structuring, setStructuring] = useState(false);
+  const [catalog, setCatalog] = useState<CompetenceCatalog | null>(null);
+  const [clarification, setClarification] = useState<ClarificationCheckResult | null>(null);
+
+  useEffect(() => {
+    api.get<CompetenceCatalog>("/api/catalog/competences").then(setCatalog).catch(() => setCatalog(null));
+  }, []);
 
   const areaEntries = record.subCompetences.filter((sc) => sc.area === activeArea);
+  const usedCatalogIds = new Set(areaEntries.map((sc) => sc.catalogId).filter(Boolean));
+  const catalogEntries: CatalogEntry[] = catalog?.[activeArea] ?? [];
 
   function startEdit(sc: SubCompetence) {
     setForm({
       id: sc.id,
+      catalogId: sc.catalogId,
       label: sc.label,
       rating: sc.rating,
       observationNotes: sc.observationNotes,
       source: "beobachtung",
-      evidenceIds: sc.evidenceIds
+      evidenceIds: sc.evidenceIds,
+      relevantForLuv: sc.relevantForLuv
     });
+    setClarification(null);
     setStructureResult(null);
+  }
+
+  function pickFromCatalog(entry: CatalogEntry) {
+    setForm((f) => ({ ...f, catalogId: entry.id, label: entry.label }));
+  }
+
+  async function checkClarification(text: string) {
+    if (!text.trim()) {
+      setClarification(null);
+      return;
+    }
+    try {
+      const result = await api.post<ClarificationCheckResult>(`/api/cases/${record.id}/clarification-check`, { text });
+      setClarification(result.needsClarification ? result : null);
+    } catch {
+      setClarification(null);
+    }
   }
 
   async function handleStructure() {
@@ -95,15 +128,18 @@ export function Step3Competences({
       }
       const updated = await api.post<CaseRecord>(`/api/cases/${record.id}/sub-competences`, {
         id: form.id,
+        catalogId: form.catalogId,
         area: activeArea,
         label: form.label,
         rating: form.rating,
         observationNotes: form.observationNotes,
-        evidenceIds
+        evidenceIds,
+        relevantForLuv: form.relevantForLuv
       });
       onUpdated(updated);
       setForm(emptyForm());
       setStructureResult(null);
+      setClarification(null);
     } finally {
       setSaving(false);
     }
@@ -122,6 +158,7 @@ export function Step3Competences({
               setActiveArea(area);
               setForm(emptyForm());
               setStructureResult(null);
+              setClarification(null);
             }}
           >
             {AREA_LABELS[area]}
@@ -134,6 +171,7 @@ export function Step3Competences({
       {areaEntries.map((sc) => (
         <div key={sc.id} className="competence-row">
           <strong>{sc.label}</strong> <span className="badge">{RATING_LABELS[sc.rating]}</span>
+          {!sc.relevantForLuv && <span className="badge">nicht relevant für LUV</span>}
           <p className="muted">{sc.observationNotes || "(keine Stichpunkte)"}</p>
           <button type="button" onClick={() => startEdit(sc)}>
             Bearbeiten
@@ -141,11 +179,35 @@ export function Step3Competences({
         </div>
       ))}
 
+      {catalogEntries.length > 0 && (
+        <div className="section-block">
+          <h3>Aus Kompetenzkatalog auswählen</h3>
+          <p className="muted">
+            Vorgeschlagene Unterkompetenzen (Version 0.2). Auswahl übernimmt nur die Bezeichnung – Bewertung und
+            Stichpunkte werden anschließend erfasst.
+          </p>
+          <div className="button-row" style={{ flexWrap: "wrap" }}>
+            {catalogEntries.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                disabled={usedCatalogIds.has(entry.id)}
+                onClick={() => pickFromCatalog(entry)}
+                title={entry.group}
+              >
+                {usedCatalogIds.has(entry.id) ? "✓ " : "+ "}
+                {entry.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="section-block">
-        <h3>{form.id ? "Unterkompetenz bearbeiten" : "Unterkompetenz hinzufügen"}</h3>
+        <h3>{form.id ? "Unterkompetenz bearbeiten" : "+ Eigene Unterkompetenz hinzufügen"}</h3>
         <div className="field">
           <label>Bezeichnung der Unterkompetenz</label>
-          <input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} />
+          <input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value, catalogId: undefined }))} />
         </div>
         <div className="grid-2">
           <div className="field">
@@ -173,13 +235,39 @@ export function Step3Competences({
           </div>
         </div>
         <div className="field">
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
+            <input
+              type="checkbox"
+              checked={form.relevantForLuv}
+              onChange={(e) => setForm((f) => ({ ...f, relevantForLuv: e.target.checked }))}
+            />
+            Für aktuellen LUV relevant
+          </label>
+        </div>
+        <div className="field">
           <label>Beobachtungsstichpunkte</label>
           <textarea
             value={form.observationNotes}
             onChange={(e) => setForm((f) => ({ ...f, observationNotes: e.target.value }))}
+            onBlur={(e) => checkClarification(e.target.value)}
             placeholder="Konkrete, kurze Stichpunkte - z.B. '8 von 10 Aufgaben schriftlich korrekt gelöst'"
           />
+          <span className="hint">
+            Gut: „Einfache Prozentaufgaben werden nur mit Unterstützung bearbeitet.“ Sehr gut: „Bei fünf Aufgaben
+            wurden zwei selbstständig gelöst, bei drei war Hilfestellung nötig.“
+          </span>
         </div>
+
+        {clarification && (
+          <div className="notice warning">
+            <strong>{clarification.message}</strong>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+              {clarification.questions.map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="button-row">
           <button type="button" onClick={handleStructure} disabled={structuring || !form.observationNotes.trim()}>

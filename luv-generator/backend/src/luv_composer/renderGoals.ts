@@ -7,19 +7,38 @@ import { SupportGoal } from "../domain/types.js";
 
 const INCLUDED_STATUSES: SupportGoal["status"][] = ["uebernommen", "bearbeitet", "neu_formuliert"];
 
+const COMPLETION_STATUS_LABELS: Record<NonNullable<SupportGoal["completionStatus"]>, string> = {
+  erreicht: "erreicht",
+  teilweise_erreicht: "teilweise erreicht",
+  weiterhin_aktuell: "weiterhin aktuell",
+  angepasst: "angepasst bzw. weiterentwickelt",
+  nicht_erreicht: "nicht erreicht",
+  nicht_mehr_relevant: "nicht mehr relevant"
+};
+
+/**
+ * Version 0.2 (PH-15 Abschnitt 34): die interne Priorisierung (A/B/C) ist rein
+ * organisatorisch und darf laut Spezifikation NICHT automatisch im LUV-Text
+ * erscheinen - sie wird hier bewusst NICHT gerendert (Korrektur ggue. Version 0.1,
+ * die die Priorität faelschlich in den Text uebernahm).
+ *
+ * Der Zielstatus (completionStatus) darf dagegen erscheinen, da er - anders als die
+ * Priorität - eine fachlich bestaetigte Aussage der Koordination ueber den bisherigen
+ * Verlauf ist (nur bei Verlaufs-/Abschluss-LUV gesetzt).
+ */
 export function renderSupportGoalsSectionText(goals: SupportGoal[]): string {
   const included = goals.filter((g) => INCLUDED_STATUSES.includes(g.status));
   if (included.length === 0) return "";
 
   return included
     .map((g) => {
-      const priorityLine = g.prioritaet ? ` (Priorität: ${g.prioritaet})` : "";
+      const statusLine = g.completionStatus ? `\nZielstatus: ${COMPLETION_STATUS_LABELS[g.completionStatus]}` : "";
       return [
-        `Bereich: ${g.bereich}${priorityLine}`,
+        `Bereich: ${g.bereich}`,
         `Ausgangslage: ${g.ausgangslage}`,
         `Ziel: ${g.ziel}`,
         `Maßnahme: ${g.massnahme}`,
-        `Überprüfungskriterium: ${g.ueberpruefungskriterium}`
+        `Überprüfungskriterium: ${g.ueberpruefungskriterium}${statusLine}`
       ].join("\n");
     })
     .join("\n\n");

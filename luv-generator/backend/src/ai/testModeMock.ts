@@ -57,6 +57,65 @@ function isSelfAssessmentOnly(payload: Record<string, unknown>): boolean {
   return entries.every((sc) => sc.source === "selbsteinschaetzung" || sc.onlySelfAssessment === true);
 }
 
+/**
+ * Deterministischer Mock fuer die semantische Faktenpruefung (Version 0.2, fact_check v2).
+ * Zerlegt den zu pruefenden Text in Saetze und bewertet jeden Satz per einfachem
+ * Wortabgleich gegen die verfuegbaren Belege - ausreichend fuer Demo/Testmodus, ersetzt
+ * aber keine echte semantische Pruefung durch Claude im Produktivbetrieb.
+ *
+ * Test-Hooks (nur fuer automatisierte Tests, keine echte Fachlogik): ein Satz kann die
+ * Marker "[FORCE_UNSUPPORTED]", "[FORCE_PARTIAL:<ID>]", "[FORCE_COVERED:<ID>]" oder
+ * "[FORCE_FAKE_ID:<ID>]" enthalten, um einen bestimmten Evidenzstatus deterministisch zu
+ * erzwingen (z.B. um eine erfundene, nicht existierende Evidence-ID zu simulieren).
+ */
+function generateFactCheckMock(payload: Record<string, unknown>): unknown {
+  const text = String(payload.text ?? "");
+  const availableEvidence = Array.isArray(payload.available_evidence)
+    ? (payload.available_evidence as Array<{ id?: string; note?: string }>)
+    : [];
+
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (sentences.length === 0) {
+    return { status: "ok", text: "[]", evidence_ids: [], warnings: [] };
+  }
+
+  const claims = sentences.map((sentence) => {
+    const forceUnsupported = /\[FORCE_UNSUPPORTED\]/.exec(sentence);
+    const forcePartial = /\[FORCE_PARTIAL:([A-Z0-9_]+)\]/.exec(sentence);
+    const forceCovered = /\[FORCE_COVERED:([A-Z0-9_]+)\]/.exec(sentence);
+    const forceFakeId = /\[FORCE_FAKE_ID:([A-Z0-9_]+)\]/.exec(sentence);
+    const cleanText = sentence.replace(/\[FORCE_[A-Z_]+(:[A-Z0-9_]+)?\]/g, "").trim();
+
+    if (forceUnsupported) return { text: cleanText, status: "unsupported", evidence_ids: [] };
+    if (forcePartial) return { text: cleanText, status: "partially_covered", evidence_ids: [forcePartial[1]] };
+    if (forceCovered) return { text: cleanText, status: "covered", evidence_ids: [forceCovered[1]] };
+    if (forceFakeId) return { text: cleanText, status: "covered", evidence_ids: [forceFakeId[1]] };
+
+    const sentenceWords = sentence
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length >= 4);
+    let bestId: string | null = null;
+    let bestOverlap = 0;
+    for (const ev of availableEvidence) {
+      const note = String(ev.note ?? "").toLowerCase();
+      const overlap = sentenceWords.filter((w) => note.includes(w)).length;
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        bestId = ev.id ?? null;
+      }
+    }
+    if (!bestId || bestOverlap === 0) return { text: cleanText, status: "unsupported", evidence_ids: [] };
+    if (bestOverlap >= 2) return { text: cleanText, status: "covered", evidence_ids: [bestId] };
+    return { text: cleanText, status: "partially_covered", evidence_ids: [bestId] };
+  });
+
+  return { status: "ok", text: JSON.stringify(claims), evidence_ids: [], warnings: [] };
+}
+
 export function generateMockResponse(task: AiTaskType, payload: Record<string, unknown>): unknown {
   switch (task) {
     case "structure_notes": {
@@ -161,7 +220,7 @@ export function generateMockResponse(task: AiTaskType, payload: Record<string, u
     }
 
     case "fact_check": {
-      return { status: "ok", text: "covered", evidence_ids: payload.available_evidence_ids ?? [], warnings: [] };
+      return generateFactCheckMock(payload);
     }
 
     default:

@@ -21,8 +21,10 @@ const SECTION_TO_AREA: Partial<Record<LuvSection["key"], CompetenceArea>> = Obje
 export function sourceNotesForSection(caseRecord: CaseRecord, key: LuvSection["key"]): SourceNoteRow[] {
   const area = SECTION_TO_AREA[key];
   if (area) {
+    // Version 0.2 (PH-15 Abschnitt 40): als nicht relevant markierte Unterkompetenzen
+    // verlaengern den LUV-Text nicht automatisch.
     return caseRecord.subCompetences
-      .filter((sc) => sc.area === area)
+      .filter((sc) => sc.area === area && sc.relevantForLuv)
       .map((sc) => ({
         label: sc.label,
         rating: sc.rating,

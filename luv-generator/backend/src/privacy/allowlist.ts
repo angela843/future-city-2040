@@ -32,7 +32,7 @@ export const TASK_ALLOWED_FIELDS: Record<AiTaskType, string[]> = {
     "confirmed_support_areas",
     "grundregel"
   ],
-  measure_suggestions: ["case_ref", "luv_art", "confirmed_goals", "grundregel"],
+  measure_suggestions: ["case_ref", "luv_art", "confirmed_goals", "library_measures", "grundregel"],
   development_comparison: [
     "case_ref",
     "area_label",
@@ -43,7 +43,7 @@ export const TASK_ALLOWED_FIELDS: Record<AiTaskType, string[]> = {
     "grundregel"
   ],
   overall_redaction: ["case_ref", "luv_art", "sections", "grundregel"],
-  fact_check: ["case_ref", "section_key", "text", "available_evidence_ids", "grundregel"]
+  fact_check: ["case_ref", "section_key", "text", "available_evidence_ids", "available_evidence", "grundregel"]
 };
 
 /**

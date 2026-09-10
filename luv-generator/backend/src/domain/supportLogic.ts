@@ -34,6 +34,10 @@ export function deriveSupportAreaCandidates(
   const result: SupportAreaCandidate[] = [];
 
   for (const sub of subCompetences) {
+    // Version 0.2 (PH-15 Abschnitt 40): als "nicht relevant fuer den aktuellen LUV"
+    // markierte Unterkompetenzen loesen keinen Foerderbereich aus.
+    if (!sub.relevantForLuv) continue;
+
     const level = triggerLevelForRating(sub.rating);
     if (!level) continue;
 
@@ -58,4 +62,20 @@ export function deriveSupportAreaCandidates(
 /** Nur bestaetigte Foerderbereiche duerfen Zielvorschlaege erzeugen. */
 export function confirmedSupportAreas(candidates: SupportAreaCandidate[]): SupportAreaCandidate[] {
   return candidates.filter((c) => c.status === "confirmed");
+}
+
+/**
+ * Foerderzielanzahl-Warnung (Version 0.2, PH-15 Abschnitt 35).
+ * "Keine starre maximale Anzahl, solange die Leistungsbeschreibung dies nicht vorgibt."
+ * TODO: fachlich abgleichen - der Schwellenwert ist ein technischer Arbeitswert, keine
+ * fachlich abgenommene Obergrenze.
+ */
+export const GOAL_COUNT_WARNING_THRESHOLD = 5;
+
+export function checkGoalCountWarning(confirmedGoalCount: number): { warn: boolean; message?: string } {
+  if (confirmedGoalCount <= GOAL_COUNT_WARNING_THRESHOLD) return { warn: false };
+  return {
+    warn: true,
+    message: `Es wurden ${confirmedGoalCount} Förderziele ausgewählt. Prüfen Sie, welche Ziele für den aktuellen Beurteilungszeitraum tatsächlich zentral sind.`
+  };
 }

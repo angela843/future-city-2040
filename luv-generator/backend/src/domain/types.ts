@@ -77,6 +77,15 @@ export interface SubCompetence {
   observationNotes: string;
   /** IDs von EvidenceItems, die diese Einschaetzung stuetzen. */
   evidenceIds: string[];
+  /** Falls aus dem Kompetenzkatalog uebernommen (Version 0.2, PH-15 Abschnitt 3-11). */
+  catalogId?: string;
+  /**
+   * "Fuer aktuellen LUV relevant?" (Version 0.2, PH-15 Abschnitt 40). Default true.
+   * Nicht relevante Eintraege fliessen nicht automatisch in den LUV-Text oder die
+   * Foerderlogik ein (PH-15: "Nicht relevante Einzelwerte sollen nicht automatisch
+   * den LUV-Text verlaengern").
+   */
+  relevantForLuv: boolean;
 }
 
 export type SupportAreaStatus = "pending" | "confirmed" | "rejected";
@@ -94,6 +103,24 @@ export interface SupportAreaCandidate {
 
 export type GoalStatus = "vorschlag" | "uebernommen" | "bearbeitet" | "neu_formuliert" | "verworfen";
 
+/**
+ * A = aktuell zentral, B = relevant, C = beobachten (Version 0.2, PH-15 Abschnitt 34).
+ * Rein intern/organisatorisch - MUSS laut PH-15 NICHT automatisch im LUV-Text erscheinen.
+ */
+export type GoalPriority = "A" | "B" | "C";
+
+/** Woher die Massnahme stammt (Version 0.2, PH-15 Abschnitt 32: Bibliothek vs. KI-Vorschlag). */
+export type MeasureSource = "bibliothek" | "ki_vorschlag" | "manuell";
+
+/** Zielstatus fuer Verlaufs-/Abschluss-LUV (Version 0.2, PH-15 Abschnitt 22, 55). */
+export type GoalCompletionStatus =
+  | "erreicht"
+  | "teilweise_erreicht"
+  | "weiterhin_aktuell"
+  | "angepasst"
+  | "nicht_erreicht"
+  | "nicht_mehr_relevant";
+
 export interface SupportGoal {
   id: string;
   supportAreaId: string;
@@ -102,7 +129,12 @@ export interface SupportGoal {
   ziel: string;
   massnahme: string;
   ueberpruefungskriterium: string;
-  prioritaet?: "hoch" | "mittel" | "niedrig";
+  /** Interne Priorisierung (Version 0.2). Erscheint NIE im gerenderten LUV-Text. */
+  prioritaet?: GoalPriority;
+  /** Woher die aktuelle Massnahme stammt (Bibliothek/KI/manuell). Version 0.2. */
+  measureSource?: MeasureSource;
+  /** Nur bei Verlaufs-/Abschluss-LUV relevant; von Claude vorschlagbar, nie verbindlich gesetzt. */
+  completionStatus?: GoalCompletionStatus;
   status: GoalStatus;
   manualOverride: boolean;
 }
@@ -194,9 +226,63 @@ export interface LuvSection {
   factCheck?: FactCheckResult;
 }
 
+/**
+ * Evidenzstatus (Version 0.2, PH-15 Abschnitt 14). "needs_review" ist neu gegenueber
+ * Version 0.1 und deckt Faelle ab, in denen weder klar gedeckt noch klar ungedeckt
+ * werden kann (z.B. Fact-Check-KI-Aufruf nicht verfuegbar) - der Abschnitt gilt dann
+ * als NICHT automatisch exportierbar, bis die Koordination ihn geprueft hat.
+ */
+export type EvidenceStatus = "covered" | "partially_covered" | "unsupported" | "needs_review";
+
+/**
+ * Eine einzelne fachliche Aussage (Claim) im generierten Text mit ihrer Beleglage
+ * (Version 0.2, PH-15 Abschnitt 13: Unterscheidung Claim/Evidence).
+ */
+export interface FactClaim {
+  text: string;
+  status: EvidenceStatus;
+  evidenceIds: string[];
+}
+
 export interface FactCheckResult {
-  status: "covered" | "partially_covered" | "unsupported";
+  status: EvidenceStatus;
   details: string[];
+  /** Aufschluesselung je Einzelaussage, falls per semantischer Pruefung ermittelt (Version 0.2). */
+  claims?: FactClaim[];
+  /** "heuristic" = einfache Wortueberlappung (Version 0.1-Fallback), "semantic" = KI-Fact-Check (Version 0.2). */
+  method: "heuristic" | "semantic";
+}
+
+/**
+ * Qualitaets- und Vollstaendigkeitscheck (Version 0.2, PH-15 Abschnitt 18-22).
+ * Reine Anzeige/Warnung - blockiert die Erstellung nicht (PH-15 Abschnitt 20:
+ * "Warnung statt Zwang").
+ */
+export interface QualityCheckItem {
+  key: string;
+  label: string;
+  /** true = vorhanden/erfuellt, false = fehlt/offen. */
+  ok: boolean;
+  /** Erlaeuternder Hinweistext, z.B. bei fehlenden Angaben. */
+  hint?: string;
+}
+
+export interface QualityCheckResult {
+  items: QualityCheckItem[];
+  /** Anzahl der Warnungen (ok === false). */
+  warningCount: number;
+}
+
+/**
+ * Massnahmenbibliothek (Version 0.2, PH-15 Abschnitt 30-33). Statische, editierbare
+ * Konfiguration - keine Datenbank/Admin-UI in Version 0.2.
+ */
+export interface MeasureLibraryEntry {
+  id: string;
+  area: CompetenceArea;
+  /** Fachliche Untergruppe, z.B. "Mathematik" (informativ, optional). */
+  group?: string;
+  text: string;
 }
 
 export interface CaseRecord {

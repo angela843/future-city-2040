@@ -22,7 +22,7 @@ function sub(
   observationNotes: string,
   evidenceIds: string[]
 ): SubCompetence {
-  return { id, area, label, rating, observationNotes, evidenceIds };
+  return { id, area, label, rating, observationNotes, evidenceIds, relevantForLuv: true };
 }
 
 /**
@@ -114,10 +114,150 @@ export function buildDemoA(): DraftCase {
 }
 
 /**
- * DEMO B - Verlaufs-LUV: tatsaechliche positive Entwicklung bei stabilem Foerderbedarf.
- * Fiktive Testperson: "Robin Beispiel"
+ * DEMO B - Start-LUV mit sehr wenigen Daten (Version 0.2, PH-15 Abschnitt 58).
+ * Demonstriert den Qualitaets-/Vollstaendigkeitscheck: viele Bereiche "nicht erhoben",
+ * keine dokumentierte Ressource - das System warnt, ergaenzt aber nichts automatisch.
+ * Fiktive Testperson: "Sam Wenigdaten"
  */
 export function buildDemoB(): DraftCase {
+  const evidenceItems: EvidenceItem[] = [
+    evidence("OBS_001", "beobachtung", "Erscheint regelmäßig zu den vereinbarten Terminen.")
+  ];
+
+  const subCompetences: SubCompetence[] = [
+    sub("SC_001", "schulische_grundkompetenzen", "Grundrechenarten", "nicht_erhoben", "", []),
+    sub("SC_002", "personale_kompetenzen", "Pünktlichkeit", "ueberwiegend_sicher", "Erscheint regelmäßig zu den vereinbarten Terminen.", ["OBS_001"])
+  ];
+
+  const supportAreaCandidates = deriveSupportAreaCandidates(subCompetences, []);
+
+  const draft: DraftCase = {
+    baseData: {
+      teilnehmerName: "Sam Wenigdaten",
+      geburtsdatum: "2006-09-01",
+      massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB)",
+      eintrittsdatum: "2026-03-02",
+      luvArt: "start",
+      beurteilungszeitraumVon: "2026-03-02",
+      beurteilungszeitraumBis: "2026-03-16",
+      koordination: "Team Koordination TESTSYSTEM"
+    },
+    startingSituation: {
+      schulabschluss: "",
+      beruflicheVorerfahrung: "",
+      bisherigePraktika: "",
+      ausgangssituation: "Sehr früher Zeitpunkt im Maßnahmenverlauf (erste zwei Wochen), noch kaum belastbare fachliche Beobachtungen vorhanden."
+    },
+    subCompetences,
+    evidence: evidenceItems,
+    career: {
+      berufswunsch: "",
+      alternativen: "",
+      orientierungsstatus: "",
+      erprobteBerufsfelder: "",
+      praktikumserkenntnisse: ""
+    },
+    further: {
+      selbsteinschaetzung: "",
+      weitereBeobachtungen: "",
+      freitext: ""
+    },
+    supportAreaCandidates,
+    supportGoals: [],
+    previousLuv: null,
+    comparisonClaims: [],
+    sections: [],
+    approvedForExport: false,
+    approvalTimestamp: null
+  };
+
+  draft.sections = ensureSectionSkeleton({ ...draft, id: "draft", createdAt: "" });
+  return draft;
+}
+
+/**
+ * DEMO C - Start-LUV mit problematischen pauschalen Formulierungen (Version 0.2,
+ * PH-15 Abschnitt 58). Demonstriert den Konkretisierungsassistenten: die
+ * Beobachtungsstichpunkte enthalten bewusst kritische, pauschale Begriffe.
+ * Fiktive Testperson: "Jamie Pauschal"
+ */
+export function buildDemoC(): DraftCase {
+  const evidenceItems: EvidenceItem[] = [
+    evidence("OBS_001", "beobachtung", "Ist faul und unmotiviert bei den Aufgaben."),
+    evidence("OBS_002", "beobachtung", "Wirkt im Unterricht oft unkonzentriert.")
+  ];
+
+  const subCompetences: SubCompetence[] = [
+    sub(
+      "SC_001",
+      "personale_kompetenzen",
+      "Arbeitsbereitschaft",
+      "foerderbedarf",
+      "Ist faul und unmotiviert bei den Aufgaben.",
+      ["OBS_001"]
+    ),
+    sub(
+      "SC_002",
+      "methodische_kompetenzen",
+      "Selbstkontrolle",
+      "foerderbedarf",
+      "Wirkt im Unterricht oft unkonzentriert.",
+      ["OBS_002"]
+    )
+  ];
+
+  const supportAreaCandidates = deriveSupportAreaCandidates(subCompetences, []);
+
+  const draft: DraftCase = {
+    baseData: {
+      teilnehmerName: "Jamie Pauschal",
+      geburtsdatum: "2006-01-11",
+      massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB)",
+      eintrittsdatum: "2026-01-12",
+      luvArt: "start",
+      beurteilungszeitraumVon: "2026-01-12",
+      beurteilungszeitraumBis: "2026-03-12",
+      koordination: "Team Koordination TESTSYSTEM"
+    },
+    startingSituation: {
+      schulabschluss: "Kein Schulabschluss (fiktiv)",
+      beruflicheVorerfahrung: "Keine.",
+      bisherigePraktika: "",
+      ausgangssituation: "Eintritt nach längerer Phase ohne Beschäftigung."
+    },
+    subCompetences,
+    evidence: evidenceItems,
+    career: {
+      berufswunsch: "",
+      alternativen: "",
+      orientierungsstatus: "",
+      erprobteBerufsfelder: "",
+      praktikumserkenntnisse: ""
+    },
+    further: {
+      selbsteinschaetzung: "",
+      weitereBeobachtungen: "",
+      freitext: ""
+    },
+    supportAreaCandidates,
+    supportGoals: [],
+    previousLuv: null,
+    comparisonClaims: [],
+    sections: [],
+    approvedForExport: false,
+    approvalTimestamp: null
+  };
+
+  draft.sections = ensureSectionSkeleton({ ...draft, id: "draft", createdAt: "" });
+  return draft;
+}
+
+/**
+ * DEMO D - Verlaufs-LUV: tatsaechliche positive Entwicklung bei stabilem Foerderbedarf.
+ * (Version 0.2, PH-15 Abschnitt 58: "Demo D - Verlaufs-LUV mit echter Entwicklung")
+ * Fiktive Testperson: "Robin Beispiel"
+ */
+export function buildDemoD(): DraftCase {
   const evidenceItems: EvidenceItem[] = [
     evidence("MATH_001", "kompetenzfeststellung", "Einfache Prozentaufgaben selbststaendig geloest, komplexe mit Hilfe."),
     evidence("DIGI_001", "unterricht", "Tabellenkalkulation: erstmals eigenstaendig einfache Formeln genutzt."),
@@ -224,10 +364,11 @@ export function buildDemoB(): DraftCase {
 }
 
 /**
- * DEMO C - Abschluss-LUV: verdichtete Entwicklung mit beruflicher Perspektive.
+ * DEMO E - Abschluss-LUV: verdichtete Entwicklung mit beruflicher Perspektive und Zielstatus.
+ * (Version 0.2, PH-15 Abschnitt 58: "Demo E - Abschluss-LUV mit Zielstatus und Perspektive")
  * Fiktive Testperson: "Kim Mustermann"
  */
-export function buildDemoC(): DraftCase {
+export function buildDemoE(): DraftCase {
   const evidenceItems: EvidenceItem[] = [
     evidence("MATH_001", "kompetenzfeststellung", "Grundrechenarten und einfache Prozentrechnung sicher beherrscht."),
     evidence("PRACTICE_001", "betriebliche_erprobung", "Vierwöchige betriebliche Erprobung im Lager erfolgreich abgeschlossen."),
@@ -240,10 +381,18 @@ export function buildDemoC(): DraftCase {
     sub("SC_003", "sozial_kommunikative_kompetenzen", "Teamfaehigkeit im Betrieb", "staerke", "Puenktlich, teamfaehig, uebernimmt zunehmend Verantwortung.", ["SOC_001"])
   ];
 
-  const supportAreaCandidates = deriveSupportAreaCandidates(subCompetences, []).map((c) => ({
-    ...c,
+  // Kein aktueller Foerderbereich mehr ausgeloest (alle Bewertungen staerke/ueberwiegend_sicher) -
+  // das fruehere Foerderziel "Prozentrechnung" wird hier zur Demonstration von PH-15 Abschnitt 22/55
+  // (Zielstatus im Abschluss-LUV) manuell als abgeschlossen nachgezeichnet.
+  const closedSupportArea = {
+    id: "SUPPORT_SC_001_CLOSED",
+    subCompetenceId: "SC_001",
+    area: "schulische_grundkompetenzen" as const,
+    label: "Grundrechenarten/Prozentrechnung",
+    triggerLevel: "development" as const,
     status: "confirmed" as const
-  }));
+  };
+  const supportAreaCandidates = [closedSupportArea];
 
   const previousRawText = "Prozentrechnung teilweise sicher, weiterer Uebungsbedarf bei komplexen Aufgaben.";
   const claim: ComparisonClaim = {
@@ -291,7 +440,20 @@ export function buildDemoC(): DraftCase {
       freitext: ""
     },
     supportAreaCandidates,
-    supportGoals: [],
+    supportGoals: [
+      {
+        id: "GOAL_001",
+        supportAreaId: closedSupportArea.id,
+        bereich: "Grundrechenarten/Prozentrechnung",
+        ausgangslage: "Prozentrechnung war zu Beginn des Beurteilungszeitraums teilweise sicher, mit Übungsbedarf bei komplexen Aufgaben.",
+        ziel: "Prozentrechnung im Alltags- und Berufsbezug sicher anwenden können.",
+        massnahme: "Praxisbezogene Übungsaufgaben und Wiederholungssequenzen.",
+        ueberpruefungskriterium: "Erneute Kompetenzfeststellung zum Ende des Beurteilungszeitraums.",
+        completionStatus: "erreicht",
+        status: "uebernommen",
+        manualOverride: false
+      }
+    ],
     previousLuv: { rawText: previousRawText, extractedClaims: [claim] },
     comparisonClaims: [claim],
     sections: [],
@@ -304,9 +466,11 @@ export function buildDemoC(): DraftCase {
 }
 
 export const DEMO_CASES = {
-  A: { key: "A", label: "Demo A – Start-LUV (Alex Fiktiv)", build: buildDemoA },
-  B: { key: "B", label: "Demo B – Verlaufs-LUV (Robin Beispiel)", build: buildDemoB },
-  C: { key: "C", label: "Demo C – Abschluss-LUV (Kim Mustermann)", build: buildDemoC }
+  A: { key: "A", label: "Demo A – Start-LUV, ausgewogen (Alex Fiktiv)", build: buildDemoA },
+  B: { key: "B", label: "Demo B – Start-LUV, sehr wenige Daten (Sam Wenigdaten)", build: buildDemoB },
+  C: { key: "C", label: "Demo C – Start-LUV, pauschale Formulierungen (Jamie Pauschal)", build: buildDemoC },
+  D: { key: "D", label: "Demo D – Verlaufs-LUV, echte Entwicklung (Robin Beispiel)", build: buildDemoD },
+  E: { key: "E", label: "Demo E – Abschluss-LUV, Zielstatus & Perspektive (Kim Mustermann)", build: buildDemoE }
 } as const;
 
 export type DemoKey = keyof typeof DEMO_CASES;

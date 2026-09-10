@@ -54,7 +54,9 @@ export const SubCompetenceInputSchema = z.object({
   label: z.string().min(1).max(200),
   rating: CompetenceRatingSchema,
   observationNotes: z.string().max(3000),
-  evidenceIds: z.array(z.string()).default([])
+  evidenceIds: z.array(z.string()).default([]),
+  catalogId: z.string().optional(),
+  relevantForLuv: z.boolean().default(true)
 });
 
 export const EvidenceItemInputSchema = z.object({
@@ -88,7 +90,11 @@ export const SupportGoalUpdateSchema = z.object({
   ziel: z.string().max(1000).optional(),
   massnahme: z.string().max(1000).optional(),
   ueberpruefungskriterium: z.string().max(1000).optional(),
-  prioritaet: z.enum(["hoch", "mittel", "niedrig"]).optional()
+  prioritaet: z.enum(["A", "B", "C"]).optional(),
+  measureSource: z.enum(["bibliothek", "ki_vorschlag", "manuell"]).optional(),
+  completionStatus: z
+    .enum(["erreicht", "teilweise_erreicht", "weiterhin_aktuell", "angepasst", "nicht_erreicht", "nicht_mehr_relevant"])
+    .optional()
 });
 
 export const SectionManualEditSchema = z.object({
@@ -101,6 +107,10 @@ export const ApprovalSchema = z.object({
 
 export const PreviousLuvSchema = z.object({
   rawText: z.string().max(20000)
+});
+
+export const ClarificationCheckSchema = z.object({
+  text: z.string().max(3000)
 });
 
 export const ComparisonClaimLinkSchema = z.object({

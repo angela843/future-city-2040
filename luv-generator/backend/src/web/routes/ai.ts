@@ -13,10 +13,11 @@ import {
 } from "../../ai/payloadBuilders.js";
 import { setSectionText } from "../../luv_composer/composer.js";
 import { applyOverallRedaction } from "../../luv_composer/overallRedaction.js";
-import { classifyFactCoverage } from "../../validation/evidenceValidation.js";
+import { runSemanticFactCheck } from "../../validation/semanticFactCheck.js";
 import { areaLabelForSection, sourceNotesForSection } from "../../domain/sectionSourceNotes.js";
 import { isConfirmedComparableDevelopment } from "../../domain/comparisonLogic.js";
 import { LuvSection, SupportGoal } from "../../domain/types.js";
+import { MEASURE_LIBRARY } from "../../domain/measureLibrary.js";
 import { nanoid } from "nanoid";
 
 export const aiRouter = Router();
@@ -133,7 +134,13 @@ aiRouter.post(
     logEvent("ai_section_generated", { caseId: record.id, sectionKey: key, kind: result.kind });
 
     if (result.kind === "ok") {
-      const factCheck = classifyFactCoverage(result.text, notes.map((n) => n.observationNotes));
+      const factCheck = await runSemanticFactCheck(
+        record.id,
+        key,
+        result.text,
+        record.evidence,
+        notes.map((n) => n.observationNotes)
+      );
       const applyResult = setSectionText(record.sections, key, result.text, result.evidenceIds, result.warnings, { manualEdit: false });
       if (!applyResult.applied) {
         res.json({ kind: "blocked_privacy", reason: applyResult.reason });
@@ -199,6 +206,7 @@ aiRouter.post(
         massnahme: suggestion.massnahme ?? "",
         ueberpruefungskriterium: suggestion.ueberpruefungskriterium ?? "",
         status: "vorschlag",
+        measureSource: "ki_vorschlag",
         manualOverride: false
       });
     }
@@ -227,7 +235,17 @@ aiRouter.post(
     if (confirmedGoals.length === 0) {
       throw new ApiError(400, "no_confirmed_goals", "Maßnahmenvorschläge erfordern mindestens ein bestätigtes Förderziel.");
     }
-    const payload = measuresPayload(record, confirmedGoals);
+    // Version 0.2 (PH-15 Abschnitt 30-33): passende Bibliotheksmassnahmen als Kontext mitgeben.
+    const relevantAreas = new Set(
+      confirmedGoals
+        .map((g) => record.supportAreaCandidates.find((a) => a.id === g.supportAreaId)?.area)
+        .filter((a): a is (typeof record.supportAreaCandidates)[number]["area"] => !!a)
+    );
+    const libraryMeasures = MEASURE_LIBRARY.filter((m) => relevantAreas.has(m.area)).map((m) => ({
+      text: m.text,
+      group: m.group
+    }));
+    const payload = measuresPayload(record, confirmedGoals, libraryMeasures);
     const result = await runAiTask("measure_suggestions", record.id, payload, []);
     logEvent("ai_measures_suggested", { caseId: record.id, kind: result.kind });
     const { status, body } = resultToHttp(result);

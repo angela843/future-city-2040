@@ -5,6 +5,7 @@ import { casesRouter } from "./routes/cases.js";
 import { aiRouter } from "./routes/ai.js";
 import { exportRouter } from "./routes/export.js";
 import { demoRouter } from "./routes/demo.js";
+import { catalogRouter } from "./routes/catalog.js";
 import { ApiError } from "./asyncHandler.js";
 import { logEvent } from "./logger.js";
 
@@ -27,6 +28,7 @@ export function createApp() {
   app.use("/api/cases", aiRouter);
   app.use("/api/cases", exportRouter);
   app.use("/api/demo", demoRouter);
+  app.use("/api/catalog", catalogRouter);
 
   app.use((req, res) => {
     res.status(404).json({ error: { code: "not_found", message: "Route nicht gefunden." } });
