@@ -1,11 +1,142 @@
 export type LuvArt = "start" | "verlauf" | "abschluss";
 
-export const MASSNAHMEART_VALUES = ["bvb", "bvb_reha"] as const;
+/**
+ * Massnahmeart (Version 0.2 / PH-17 V1.0). Dreistufig, kein technischer Default -
+ * aktive Auswahl ist Pflicht (Migrationsplan 0.1->0.2, Entscheidung 6).
+ */
+export const MASSNAHMEART_VALUES = ["bvb1", "bvb2", "bvb3"] as const;
 export type Massnahmeart = (typeof MASSNAHMEART_VALUES)[number];
 export const MASSNAHMEART_LABELS: Record<Massnahmeart, string> = {
-  bvb: "BvB",
-  bvb_reha: "BvB-Reha"
+  bvb1: "BvB 1",
+  bvb2: "BvB-Reha (BvB 2)",
+  bvb3: "BvB-Reha (BvB 3)"
 };
+
+/** PH-17 V1.0 Abschnitt 4: Anlass des Verlaufs-LUV, steuert die Fristformel. */
+export const VERLAUF_ANLASS_VALUES = ["regulaer", "vor_massnahmeende", "verlaengerung", "sonstiger_anlass"] as const;
+export type VerlaufAnlass = (typeof VERLAUF_ANLASS_VALUES)[number];
+export const VERLAUF_ANLASS_LABELS: Record<VerlaufAnlass, string> = {
+  regulaer: "Regulär",
+  vor_massnahmeende: "Vor Maßnahmeende",
+  verlaengerung: "Verlängerung",
+  sonstiger_anlass: "Sonstiger Anlass"
+};
+
+/** PH-17 V1.0 / Entwicklungsauftrag B: Maßnahmeziel, im Start strukturiert festgelegt. */
+export const MASSNAHMEZIEL_VALUES = ["berufsausbildung", "sv_beschaeftigung"] as const;
+export type Massnahmeziel = (typeof MASSNAHMEZIEL_VALUES)[number];
+export const MASSNAHMEZIEL_LABELS: Record<Massnahmeziel, string> = {
+  berufsausbildung: "Berufsausbildung",
+  sv_beschaeftigung: "Sozialversicherungspflichtige Beschäftigung"
+};
+
+/** Migrationsplan 0.1->0.2, Entscheidung 8 (verbindliche Rollenliste des Nutzers). */
+export const ROLLE_VALUES = [
+  "teilnehmende_person",
+  "bildungsbegleitung_case_management",
+  "ausbilder",
+  "lehrkraft",
+  "sozialpaedagogik",
+  "psychologe_psychologin",
+  "weiteres_fachpersonal",
+  "paedagogische_mitarbeitende_lernort_wohnen",
+  "gemeinsame_aufgaben"
+] as const;
+export type Rolle = (typeof ROLLE_VALUES)[number];
+export const ROLLE_LABELS: Record<Rolle, string> = {
+  teilnehmende_person: "Teilnehmende Person",
+  bildungsbegleitung_case_management: "Bildungsbegleitung / Case Management",
+  ausbilder: "Ausbilder/in",
+  lehrkraft: "Lehrkraft",
+  sozialpaedagogik: "Sozialpädagogik",
+  psychologe_psychologin: "Psychologe/Psychologin",
+  weiteres_fachpersonal: "Weiteres Fachpersonal",
+  paedagogische_mitarbeitende_lernort_wohnen: "Pädagogische Mitarbeitende Lernort Wohnen",
+  gemeinsame_aufgaben: "Gemeinsame Aufgaben"
+};
+
+export type JaNein = "ja" | "nein";
+export const JA_NEIN_LABELS: Record<JaNein, string> = { ja: "Ja", nein: "Nein" };
+export type JaNeinNichtRelevant = "ja" | "nein" | "nicht_relevant";
+export const JA_NEIN_NICHT_RELEVANT_LABELS: Record<JaNeinNichtRelevant, string> = {
+  ja: "Ja",
+  nein: "Nein",
+  nicht_relevant: "Nicht relevant"
+};
+
+export const UEBERMITTLUNGSANLASS_VALUES = ["regulaeres_ende", "vorzeitige_beendigung"] as const;
+export type Uebermittlungsanlass = (typeof UEBERMITTLUNGSANLASS_VALUES)[number];
+export const UEBERMITTLUNGSANLASS_LABELS: Record<Uebermittlungsanlass, string> = {
+  regulaeres_ende: "Reguläres Ende",
+  vorzeitige_beendigung: "Vorzeitige Beendigung"
+};
+
+export const VORZEITIGE_BEENDIGUNG_ART_VALUES = ["uebergang_ausbildung_arbeit", "abbruch"] as const;
+export type VorzeitigeBeendigungArt = (typeof VORZEITIGE_BEENDIGUNG_ART_VALUES)[number];
+export const VORZEITIGE_BEENDIGUNG_ART_LABELS: Record<VorzeitigeBeendigungArt, string> = {
+  uebergang_ausbildung_arbeit: "Übergang in Ausbildung/Arbeit",
+  abbruch: "Abbruch"
+};
+
+export interface HumanConfirmed<T> {
+  value: T;
+  humanConfirmed: boolean;
+}
+
+/**
+ * Abschluss-Modul (offizieller BA-Abschluss-LuV 10/2025, Migrationsplan 0.1->0.2
+ * Abschnitt 3.4). Felder 4-6/8-12 sind direkte Identifikatoren - rein lokal, nie
+ * Teil eines Claude-Payloads. Felder 14/15/19 sind HUMAN_CONFIRMED-pflichtig.
+ */
+export interface AbschlussErgebnis {
+  abschlussLuvVom: string | null;
+  uebermittlungsanlass: Uebermittlungsanlass | null;
+  vorzeitigeBeendigungArt: VorzeitigeBeendigungArt | null;
+  vorname: string;
+  nachname: string;
+  kundennummer: string;
+  lernortWohnenInternat: JaNein | null;
+  traegerEinrichtung: string;
+  ansprechpersonVorname: string;
+  ansprechpersonNachname: string;
+  telefon: string;
+  email: string;
+  hauptschulabschlussErreicht: JaNeinNichtRelevant | null;
+  ausbildungsreifeErreicht: HumanConfirmed<JaNein | null>;
+  berufseignung: HumanConfirmed<string>;
+  qualifizierungsAusbildungsbausteine: string;
+  vermittlungsfaehigkeit: string;
+  eingliederungsergebnis: string;
+  unterstuetzungsbedarf: HumanConfirmed<JaNein | null>;
+  unterstuetzungsbedarfBeschreibungEmpfehlung: string;
+  stabilisierungFestigung: string;
+}
+
+export function emptyAbschlussErgebnis(): AbschlussErgebnis {
+  return {
+    abschlussLuvVom: null,
+    uebermittlungsanlass: null,
+    vorzeitigeBeendigungArt: null,
+    vorname: "",
+    nachname: "",
+    kundennummer: "",
+    lernortWohnenInternat: null,
+    traegerEinrichtung: "",
+    ansprechpersonVorname: "",
+    ansprechpersonNachname: "",
+    telefon: "",
+    email: "",
+    hauptschulabschlussErreicht: null,
+    ausbildungsreifeErreicht: { value: null, humanConfirmed: false },
+    berufseignung: { value: "", humanConfirmed: false },
+    qualifizierungsAusbildungsbausteine: "",
+    vermittlungsfaehigkeit: "",
+    eingliederungsergebnis: "",
+    unterstuetzungsbedarf: { value: null, humanConfirmed: false },
+    unterstuetzungsbedarfBeschreibungEmpfehlung: "",
+    stabilisierungFestigung: ""
+  };
+}
 
 export const BA_FOERDERZIELBEREICHE = [
   "grundkompetenzen",
@@ -217,6 +348,7 @@ export interface SupportGoal {
   measureSource?: MeasureSource;
   completionStatus?: GoalCompletionStatus;
   foerderzielbereich?: BAFoerderzielbereich;
+  rolle?: Rolle;
   status: GoalStatus;
   manualOverride: boolean;
 }
@@ -254,6 +386,10 @@ export interface BaseData {
   eintrittsdatum: string;
   kompetenzanalyseEnde: string | null;
   massnahmeEndeGeplant: string | null;
+  verlaufAnlass: VerlaufAnlass | null;
+  verlaengerungstermin: string | null;
+  massnahmeziel: Massnahmeziel | null;
+  begruendungKeineAusbildung: string;
   luvArt: LuvArt;
   beurteilungszeitraumVon: string;
   beurteilungszeitraumBis: string;
@@ -279,6 +415,7 @@ export interface FristenResult {
   startLuvFaellig: string | null;
   ersteVerlaufsLuvFaellig: string | null;
   weitereVerlaufsLuvFaellig: string | null;
+  verlaengerungsVerlaufsLuvFaellig: string | null;
   abschlussLuvFaellig: string | null;
 }
 
@@ -335,6 +472,7 @@ export type SectionKey =
   | "support_goals"
   | "measures"
   | "overall_assessment"
+  | "abschluss_ergebnis"
   | "perspective";
 
 export type EvidenceStatus = "covered" | "partially_covered" | "unsupported" | "needs_review";
@@ -435,6 +573,7 @@ export interface CaseRecord {
   sections: LuvSection[];
   foerderzielbereichTracking: FoerderzielbereichTracking[];
   teilnehmerbesprechung: Teilnehmerbesprechung;
+  abschlussErgebnis: AbschlussErgebnis;
   approvedForExport: boolean;
   approvalTimestamp: string | null;
 }

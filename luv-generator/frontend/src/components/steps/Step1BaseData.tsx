@@ -1,25 +1,59 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../../api/client.js";
-import { BaseData, CaseRecord, FristenResult, KompetenzanalyseDauerHinweis, LuvArt, MASSNAHMEART_LABELS, MASSNAHMEART_VALUES, Massnahmeart } from "../../types.js";
+import {
+  BaseData,
+  CaseRecord,
+  FristenResult,
+  KompetenzanalyseDauerHinweis,
+  LuvArt,
+  MASSNAHMEART_LABELS,
+  MASSNAHMEART_VALUES,
+  MASSNAHMEZIEL_LABELS,
+  MASSNAHMEZIEL_VALUES,
+  Massnahmeart,
+  Massnahmeziel,
+  VERLAUF_ANLASS_LABELS,
+  VERLAUF_ANLASS_VALUES,
+  VerlaufAnlass
+} from "../../types.js";
 
 interface DemoInfo {
   key: string;
   label: string;
 }
 
-const EMPTY: BaseData = {
+/**
+ * Massnahmeart/Anlass/Massnahmeziel sind zunaechst "" (kein Default) - eine aktive
+ * Auswahl ist Pflicht (Migrationsplan 0.1->0.2, Entscheidung 6). Die HTML-Validierung
+ * (required) verhindert ein Absenden ohne Auswahl.
+ */
+type FormState = Omit<BaseData, "massnahmeart" | "verlaufAnlass" | "massnahmeziel"> & {
+  massnahmeart: Massnahmeart | "";
+  verlaufAnlass: VerlaufAnlass | "";
+  massnahmeziel: Massnahmeziel | "";
+};
+
+const EMPTY: FormState = {
   teilnehmerName: "",
   geburtsdatum: "",
   massnahme: "",
-  massnahmeart: "bvb",
+  massnahmeart: "",
   eintrittsdatum: "",
   kompetenzanalyseEnde: "",
   massnahmeEndeGeplant: "",
+  verlaufAnlass: "",
+  verlaengerungstermin: "",
+  massnahmeziel: "",
+  begruendungKeineAusbildung: "",
   luvArt: "start",
   beurteilungszeitraumVon: "",
   beurteilungszeitraumBis: "",
   koordination: ""
 };
+
+function toFormState(baseData: BaseData): FormState {
+  return { ...baseData, verlaufAnlass: baseData.verlaufAnlass ?? "", massnahmeziel: baseData.massnahmeziel ?? "" };
+}
 
 export function Step1BaseData({
   record,
@@ -36,13 +70,13 @@ export function Step1BaseData({
   onLoadDemo: (key: string) => void;
   onNext: () => void;
 }) {
-  const [form, setForm] = useState<BaseData>(record?.baseData ?? EMPTY);
+  const [form, setForm] = useState<FormState>(record ? toFormState(record.baseData) : EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fristen, setFristen] = useState<FristenResult | null>(null);
   const [dauerHinweis, setDauerHinweis] = useState<KompetenzanalyseDauerHinweis | null>(null);
 
-  function set<K extends keyof BaseData>(key: K, value: BaseData[K]) {
+  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -66,14 +100,30 @@ export function Step1BaseData({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!form.massnahmeart) {
+      setError("Bitte eine Maßnahmeart auswählen (BvB 1 / BvB 2 / BvB 3) - keine Vorbelegung möglich.");
+      return;
+    }
+    if (form.massnahmeziel === "sv_beschaeftigung" && !form.begruendungKeineAusbildung.trim()) {
+      setError(
+        'Bei Maßnahmeziel „sozialversicherungspflichtige Beschäftigung" ist die Begründung, weshalb Berufsausbildung voraussichtlich nicht erreicht werden kann, ein Pflichtfeld.'
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
+    const payload: BaseData = {
+      ...form,
+      massnahmeart: form.massnahmeart,
+      verlaufAnlass: form.verlaufAnlass || null,
+      massnahmeziel: form.massnahmeziel || null
+    };
     try {
       if (record) {
-        const updated = await api.put<CaseRecord>(`/api/cases/${record.id}/base-data`, form);
+        const updated = await api.put<CaseRecord>(`/api/cases/${record.id}/base-data`, payload);
         onUpdated(updated);
       } else {
-        const created = await api.post<CaseRecord>("/api/cases", form);
+        const created = await api.post<CaseRecord>("/api/cases", payload);
         onCreated(created);
       }
       onNext();
@@ -143,15 +193,91 @@ export function Step1BaseData({
           </div>
           <div className="field">
             <label htmlFor="massnahmeart">Maßnahmeart</label>
-            <select id="massnahmeart" value={form.massnahmeart} onChange={(e) => set("massnahmeart", e.target.value as Massnahmeart)}>
+            <select
+              id="massnahmeart"
+              required
+              value={form.massnahmeart}
+              onChange={(e) => set("massnahmeart", e.target.value as Massnahmeart)}
+            >
+              <option value="" disabled>
+                Bitte wählen …
+              </option>
               {MASSNAHMEART_VALUES.map((m) => (
                 <option key={m} value={m}>
                   {MASSNAHMEART_LABELS[m]}
                 </option>
               ))}
             </select>
+            <p className="muted">Keine Vorbelegung (PH-17 V1.0): eine aktive Auswahl ist Pflicht.</p>
           </div>
         </div>
+
+        <div className="grid-2">
+          <div className="field">
+            <label htmlFor="massnahmeziel">Maßnahmeziel</label>
+            <select
+              id="massnahmeziel"
+              required
+              value={form.massnahmeziel}
+              onChange={(e) => set("massnahmeziel", e.target.value as Massnahmeziel)}
+            >
+              <option value="" disabled>
+                Bitte wählen …
+              </option>
+              {MASSNAHMEZIEL_VALUES.map((m) => (
+                <option key={m} value={m}>
+                  {MASSNAHMEZIEL_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </div>
+          {form.massnahmeziel === "sv_beschaeftigung" && (
+            <div className="field">
+              <label htmlFor="begruendungKeineAusbildung">
+                Begründung, weshalb Berufsausbildung voraussichtlich nicht erreicht werden kann (Pflichtfeld)
+              </label>
+              <textarea
+                id="begruendungKeineAusbildung"
+                required
+                value={form.begruendungKeineAusbildung}
+                onChange={(e) => set("begruendungKeineAusbildung", e.target.value)}
+              />
+              <p className="muted">Wird nie durch Claude erzeugt oder ergänzt - reine fachliche Eingabe.</p>
+            </div>
+          )}
+        </div>
+
+        {form.luvArt === "verlauf" && (
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="verlaufAnlass">Anlass des Verlaufs-LUV</label>
+              <select
+                id="verlaufAnlass"
+                value={form.verlaufAnlass}
+                onChange={(e) => set("verlaufAnlass", e.target.value as VerlaufAnlass)}
+              >
+                <option value="">Bitte wählen …</option>
+                {VERLAUF_ANLASS_VALUES.map((a) => (
+                  <option key={a} value={a}>
+                    {VERLAUF_ANLASS_LABELS[a]}
+                  </option>
+                ))}
+              </select>
+              <p className="muted">Steuert die Fristformel (PH-17 V1.0 Abschnitt 6) - Claude berechnet keine Fristen.</p>
+            </div>
+            {form.verlaufAnlass === "verlaengerung" && (
+              <div className="field">
+                <label htmlFor="verlaengerungstermin">Verlängerungstermin</label>
+                <input
+                  id="verlaengerungstermin"
+                  type="date"
+                  value={form.verlaengerungstermin ?? ""}
+                  onChange={(e) => set("verlaengerungstermin", e.target.value || null)}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid-2">
           <div className="field">
@@ -240,6 +366,7 @@ export function Step1BaseData({
               <li>Start-LUV fällig: {fristen.startLuvFaellig ?? "– (Ende Kompetenzanalyse fehlt)"}</li>
               <li>Erste Verlaufs-LUV fällig: {fristen.ersteVerlaufsLuvFaellig ?? "–"}</li>
               <li>Weitere Verlaufs-LUV fällig: {fristen.weitereVerlaufsLuvFaellig ?? "– (geplantes Maßnahmeende fehlt)"}</li>
+              <li>Verlängerungs-Verlaufs-LUV fällig: {fristen.verlaengerungsVerlaufsLuvFaellig ?? "– (Verlängerungstermin fehlt)"}</li>
               <li>Abschluss-LUV fällig: {fristen.abschlussLuvFaellig ?? "– (geplantes Maßnahmeende fehlt)"}</li>
             </ul>
             {dauerHinweis && !dauerHinweis.ok && <div className="notice warn">{dauerHinweis.hinweis}</div>}

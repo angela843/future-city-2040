@@ -18,6 +18,7 @@ export const SECTION_TITLES: Record<LuvSection["key"], string> = {
   support_goals: "Förderziele und Maßnahmen",
   measures: "Maßnahmen",
   overall_assessment: "Gesamtbeurteilung",
+  abschluss_ergebnis: "Abschlussergebnisse",
   perspective: "Ausblick / Perspektive"
 };
 
@@ -25,6 +26,12 @@ export const SECTION_TITLES: Record<LuvSection["key"], string> = {
  * Start-LUV (Abschnitt 19): Ausgangslage, Ressourcen/Kompetenzen, berufliche Orientierung,
  * Foerderbedarf, Foerderziele/Massnahmen, kurzer Ausblick. Keine Entwicklungsbehauptungen
  * ohne vorherige Daten -> kein "development"-Abschnitt im Start-LUV.
+ *
+ * "digitale_kompetenzen" ist kein offizieller BA-Kompetenzbereich (PH-17 V1.0 Abschnitt 3,
+ * Migrationsplan 0.1->0.2 Entscheidung 1) und erscheint deshalb NICHT als eigene
+ * automatisch erzeugte LUV-Ausgabesektion - bleibt aber interner Erhebungsbereich
+ * (Schritt 3 / Kompetenzkatalog). Relevante Erkenntnisse muessen von der Koordination
+ * manuell einem passenden offiziellen Feld zugeordnet werden.
  */
 const START_ORDER: LuvSection["key"][] = [
   "initial_situation",
@@ -32,7 +39,6 @@ const START_ORDER: LuvSection["key"][] = [
   "personal_competences",
   "methodical_competences",
   "social_competences",
-  "digital_competences",
   "practical_competences",
   "career_orientation",
   "support_needs",
@@ -51,7 +57,6 @@ const VERLAUF_ORDER: LuvSection["key"][] = [
   "personal_competences",
   "methodical_competences",
   "social_competences",
-  "digital_competences",
   "practical_competences",
   "career_orientation",
   "support_needs",
@@ -61,7 +66,7 @@ const VERLAUF_ORDER: LuvSection["key"][] = [
 
 /**
  * Abschluss-LUV (Abschnitt 23): Ausgangspunkt -> Entwicklung -> aktueller Stand ->
- * Zielstatus -> verbleibender Unterstuetzungsbedarf -> Perspektive (verdichtet).
+ * strukturierte Abschlussergebnisse (PH-17 V1.0, 22-Felder-Struktur) -> Perspektive.
  */
 const ABSCHLUSS_ORDER: LuvSection["key"][] = [
   "initial_situation",
@@ -70,11 +75,11 @@ const ABSCHLUSS_ORDER: LuvSection["key"][] = [
   "personal_competences",
   "methodical_competences",
   "social_competences",
-  "digital_competences",
   "practical_competences",
   "career_orientation",
   "support_needs",
   "overall_assessment",
+  "abschluss_ergebnis",
   "perspective"
 ];
 

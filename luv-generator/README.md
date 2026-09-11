@@ -1,13 +1,19 @@
-# LUV-Generator BvB / BvB Reha – Version 0.2 (PH-15 Arbeitsfassung 1.1)
+# LUV-Generator BvB 1/2/3 – Version 0.2 (PH-17 V1.0 / Entwicklungsauftrag V0.2)
 
 > **TESTSYSTEM – Keine echten personenbezogenen Daten eingeben.**
 > Dieses System verwendet ausschließlich fiktive Testdaten. Es ist kein
 > Produktivsystem, keine Teilnehmerverwaltung und keine digitale Teilnehmerakte.
 
+> **Status: Abnahme- und Teststand.** Version 0.2 ist **nicht** als produktiv
+> freigegeben gekennzeichnet. Sie dient der fachlichen Abnahme/dem Testen und
+> ist bewusst so lange als Entwurf zu behandeln, bis eine ausdrückliche
+> produktive Freigabe erfolgt.
+
 Ein browserbasiertes Unterstützungswerkzeug für Koordinatorinnen und
 Koordinatoren zur Erstellung von **Start-LUV**, **Verlaufs-LUV** und
 **Abschluss-LUV** (Lern- und Entwicklungsdokumentation) in berufsvorbereitenden
-Bildungsmaßnahmen (BvB / BvB Reha).
+Bildungsmaßnahmen (BvB 1, BvB-Reha BvB 2, BvB-Reha BvB 3) nach der
+BA-LuV-Struktur 10/2025 (PH-17 V1.0).
 
 ---
 
@@ -26,8 +32,10 @@ Bildungsmaßnahmen (BvB / BvB Reha).
 11. [Implementierte Sicherheits-/Datenschutzregeln](#implementierte-sicherheits--datenschutzregeln)
 12. [Version 0.1 → 0.2 – Änderungsübersicht](#version-01--02--änderungsübersicht)
 13. [PH-15 Arbeitsfassung 1.1 – Ergänzungen](#ph-15-arbeitsfassung-11--ergänzungen)
-14. [Bekannte offene Punkte](#bekannte-offene-punkte)
-15. [Vorschläge für Version 0.3](#vorschläge-für-version-03)
+14. [PH-17 V1.0 / Entwicklungsauftrag V0.2 – Ergänzungen](#ph-17-v10--entwicklungsauftrag-v02--ergänzungen)
+15. [Testbericht (PASS/FAIL) und 3×3-Testmatrix](#testbericht-passfail-und-3×3-testmatrix)
+16. [Bekannte offene Punkte](#bekannte-offene-punkte)
+17. [Vorschläge für Version 0.3](#vorschläge-für-version-03)
 
 ---
 
@@ -213,7 +221,15 @@ Seit PH-15 Arbeitsfassung 1.1 zusätzlich `v02_ph15_v11.test.ts` (Abschnitt 87):
 | V02-T19 | Fremdrückmeldung bleibt als Fremdquelle gekennzeichnet |
 
 Alle 29 Testfälle aus Version 0.1/0.2 (Arbeitsfassung 1.0) bleiben unverändert
-Teil der Suite (Regressionsschutz) – insgesamt 38 Tests, alle grün.
+Teil der Suite (Regressionsschutz).
+
+Seit PH-17 V1.0 / Entwicklungsauftrag V0.2 zusätzlich `v03_ph17.test.ts`: die
+vollständige **3×3-Testmatrix** (START/VERLAUF/ABSCHLUSS × BvB 1/BvB 2/BvB 3,
+9 End-to-End-Fälle) sowie die vereinbarten **Negativtests**. Details siehe
+[Testbericht (PASS/FAIL) und 3×3-Testmatrix](#testbericht-passfail-und-3×3-testmatrix).
+
+Insgesamt **54 Tests, alle grün** (38 aus Version 0.1/0.2/PH-15 v1.1 +
+16 aus PH-17 V1.0).
 
 Frontend-Build/Typecheck:
 
@@ -231,15 +247,17 @@ luv-generator/
 │   ├── src/
 │   │   ├── domain/            # Neutrales Datenmodell, deterministische Fachlogik, Kompetenzkatalog,
 │   │   │                      # Maßnahmenbibliothek, Konkretisierungsassistent, Qualitäts-/Freigabecheck,
-│   │   │                      # Fristenlogik (fristenLogic.ts), BA-Förderzielbereiche
+│   │   │                      # Fristenlogik (fristenLogic.ts), BA-Förderzielbereiche,
+│   │   │                      # Vorvalidierung/harte Blocker (preValidation.ts)
 │   │   ├── privacy/           # Privacy Gateway (Allowlist, Identifikatoren, Sensitive-Scan)
 │   │   ├── ai/                # Prompt Builder, Prompt-Templates (versioniert, u. a. fact_check v2, measures v2), Claude-Client, Testmodus-Mock
 │   │   ├── validation/        # Schema-, Evidenz-, Faktenabdeckungsprüfung (heuristisch + semantisch), Request-Validierung
-│   │   ├── luv_composer/      # Abschnittsauswahl/-reihenfolge, Redundanzprüfung, Gesamtredaktion, manueller Schutz
+│   │   ├── luv_composer/      # Abschnittsauswahl/-reihenfolge, Redundanzprüfung, Gesamtredaktion, manueller Schutz,
+│   │   │                      # Abschluss-Modul-Rendering (renderAbschlussErgebnis.ts)
 │   │   ├── export/            # DOCX-Export, Kopiertext
-│   │   ├── demo/              # 7 fiktive Demo-Fälle A-G (Start ×5, Verlauf, Abschluss)
-│   │   ├── web/                # Express-App, Routen (inkl. Katalog-/Qualitäts-/Freigabecheck-/Fristen-Routen), Session-Speicher, Logging
-│   │   └── __tests__/         # Vitest-Suite (Testfälle 1-10 + V02-T01..T19)
+│   │   ├── demo/              # 7 fiktive Demo-Fälle A-G (Start, Verlauf, Abschluss)
+│   │   ├── web/                # Express-App, Routen (inkl. Katalog-/Qualitäts-/Freigabecheck-/Fristen-/Abschluss-Modul-Routen), Session-Speicher, Logging
+│   │   └── __tests__/         # Vitest-Suite (Testfälle 1-10 + V02-T01..T19 + V0.2/PH-17-Matrix/Negativtests, 54 Tests)
 │   ├── package.json / tsconfig.json / vitest.config.ts / .env.example
 └── frontend/
     ├── src/
@@ -435,6 +453,196 @@ vollständige Förderplanung, Förderziel-Zertifikatsmodul. Ebenso nicht
 umgesetzt: ein eigenständiger, produktiver BvB-Förderzielnachweis (§85,
 ausdrücklich "nicht in den Kern des LUV-Generators integrieren").
 
+## PH-17 V1.0 / Entwicklungsauftrag V0.2 – Ergänzungen
+
+Grundlage: der bisherige Master-Arbeitsstand V1.0 (PH-15 Arbeitsfassung 1.1,
+oben) plus **PH-17 V1.0** ("Anpassung LUV-Generator an die BA-LuV-Struktur
+10/2025") und der **Claude-Entwicklungsauftrag Version 0.2**. PH-17 hat bei
+Widersprüchen zur BA-LuV-Struktur 10/2025 ausdrücklich Vorrang vor PH-15.
+Diese Ergänzungen wurden anhand eines vom Nutzer vor der Umsetzung
+freigegebenen **Migrationsplans 0.1 → 0.2** implementiert (9 dokumentierte
+fachliche Entscheidungen, keine eigenständigen Annahmen während der
+Umsetzung). Umgesetzt in der im Migrationsplan festgelegten Reihenfolge:
+
+1. **Maßnahmeart dreistufig, kein Default** (`Massnahmeart = "bvb1" |
+   "bvb2" | "bvb3"`, vormals binär `bvb`/`bvb_reha`) – eine aktive Auswahl ist
+   bei Fallanlage Pflicht, es gibt keine technische Vorbelegung mehr.
+2. **Fristen-Engine erweitert** (`domain/fristenLogic.ts`): erste
+   Verlaufs-LUV BvB 1/BvB 2 weiterhin 6 Monate, **BvB 3 7 Monate** nach
+   Maßnahmebeginn; neuer Fristzweig **„Verlängerung"** (BvB 1/BvB 2 3 Wochen,
+   BvB 3 4 Wochen vor dem erfassten Verlängerungstermin). Die
+   Kompetenzanalyse-Dauer-Hinweislogik gilt seit PH-17 **nur noch für BvB 1**
+   (3–5 Wochen) – die frühere „BvB-Reha 4–8 Wochen"-Regel wurde **nicht**
+   ungeprüft auf BvB 2/BvB 3 übertragen (keine verbindliche Grundlage, daher
+   für BvB 2/BvB 3 kein Hinweis mehr).
+3. **Anlass-Feld im Verlauf** (`BaseData.verlaufAnlass`: regulär / vor
+   Maßnahmeende / Verlängerung / sonstiger Anlass) steuert, welche Fristformel
+   angezeigt wird; bei „Verlängerung" zusätzliches Datumsfeld
+   `verlaengerungstermin`.
+4. **Maßnahmeziel + Begründungspflicht** (`BaseData.massnahmeziel`:
+   Berufsausbildung / sozialversicherungspflichtige Beschäftigung): bei
+   SV-Beschäftigung ist die Begründung, weshalb eine Berufsausbildung
+   voraussichtlich nicht erreicht werden kann, ein **Pflicht-Freitextfeld**,
+   das **nie durch Claude erzeugt wird**. Fehlt sie, wird die Fallanlage
+   bereits serverseitig per Schema abgelehnt (`validation_error`). Im
+   Abschluss-Modul erscheint das Maßnahmeziel nur als Referenz, nicht als
+   erneute Abfrage.
+5. **Neue Vorvalidierungsschicht mit harten Blockern**
+   (`domain/preValidation.ts`) – anders als der bestehende Qualitätscheck
+   (der für alle übrigen Punkte weiterhin „Warnung statt Zwang" bleibt)
+   **verweigert** diese Schicht aktiv die KI-Generierung bzw. die Freigabe:
+   - Ein bestätigter Förderbereich **ohne ausreichenden Beleg** (weder
+     Beobachtungsstichpunkte noch verknüpfte Evidenz) blockiert die
+     KI-Generierung des betreffenden Inhalts und die finale Freigabe (PH-17
+     vor PH-15).
+   - Maßnahmeziel „SV-Beschäftigung" ohne ausgefüllte Begründung blockiert
+     jede KI-Generierung und die Freigabe.
+   - Ein Abschluss-Fall ohne die drei HUMAN_CONFIRMED-Entscheidungen (siehe
+     Punkt 8) blockiert die Freigabe.
+   Wird ein solcher Blocker vor einem KI-Aufruf ausgelöst, findet **kein**
+   Claude-Aufruf statt; die API antwortet mit `{"kind":
+   "blocked_pre_validation", "reason": "…"}`. Vor der finalen Freigabe wirft
+   `POST /:id/approve` in diesem Fall `409 pre_validation_blocked`.
+6. **„Digitale Kompetenzen" kein offizieller 6. BA-Bereich mehr**
+   (Entscheidung 1): bleibt interner Erhebungsbereich (Schritt 3 /
+   Kompetenzkatalog), erscheint aber **nicht mehr** als eigene automatisch
+   erzeugte LUV-Ausgabesektion in Start-/Verlaufs-/Abschluss-LUV. Relevante
+   Erkenntnisse müssen von der Koordination manuell einem passenden
+   offiziellen Feld zugeordnet werden – das System führt hier **keine**
+   automatische Zusammenführung durch, um keine Zuordnung zu erfinden.
+7. **Rollenbezogene Zielvereinbarung** (`Rolle`, 9 vom Nutzer vorgegebene
+   Werte, u. a. teilnehmende Person, Bildungsbegleitung/Case Management,
+   Ausbilder/in, Lehrkraft, Sozialpädagogik, Psychologe/Psychologin,
+   pädagogische Mitarbeitende Lernort Wohnen, gemeinsame Aufgaben). Jedes
+   Förderziel kann optional einer Rolle zugeordnet werden
+   (`GET /catalog/rollen?massnahmeart=…`, `SupportGoal.rolle`). „Pädagogische
+   Mitarbeitende Lernort Wohnen" ist als **dokumentierte Annahme** nur bei
+   BvB 3 wählbar (deckt sich mit dem BvB-3-Sonderfeld unten); alle übrigen
+   Rollen sind massnahmeartunabhängig wählbar
+   (`domain/supportLogic.ts: rollenForMassnahmeart`, `TODO: fachlich
+   abgleichen` falls weitere Rollen tatsächlich massnahmeabhängig sind).
+8. **Abschluss-Modul mit 22-Felder-Struktur** (`domain/types.ts:
+   AbschlussErgebnis`), angelehnt an den vom Nutzer vorgegebenen offiziellen
+   BA-Abschluss-LuV 10/2025 (keine eigene Interpretation der Feldstruktur):
+   Übermittlungsanlass (reguläres Ende / vorzeitige Beendigung, bei
+   Beendigung zusätzlich Übergang Ausbildung/Arbeit oder Abbruch),
+   Hauptschulabschluss, Vermittlungsfähigkeit, Eingliederungsergebnis,
+   Absprachen zur Stabilisierung/Festigung u. a. Drei Entscheidungen sind
+   **HUMAN_CONFIRMED**-pflichtig – *allgemeine Ausbildungsreife erreicht*,
+   *Berufseignung* und *Unterstützungsbedarf*: Claude darf diese Werte nie
+   selbst ableiten; erst eine aktive Bestätigung durch die Koordination
+   (`{ value, humanConfirmed: true }`) setzt sie frei und hebt den
+   Freigabeblocker (Punkt 5) auf. Direkte Identifikatoren des Moduls
+   (Vorname, Nachname, Kundennummer, Träger/Einrichtung, Ansprechperson,
+   Telefon, E-Mail) werden exakt wie `teilnehmerName`/`geburtsdatum`
+   behandelt: rein lokal, Teil von Prüfansicht/DOCX-Export, **niemals** Teil
+   eines Claude-Payloads (`privacy/allowlist.ts`, ergänzte
+   `DIRECT_IDENTIFIER_KEYS`). Ein deterministischer Renderer
+   (`luv_composer/renderAbschlussErgebnis.ts`) erzeugt daraus die
+   Ausgabesektion `abschluss_ergebnis` – ohne KI-Beteiligung, ausschließlich
+   auf Basis bereits erfasster/bestätigter Angaben.
+9. **BvB-3-Sonderfeld „Lernort Wohnen/Internat"**
+   (`AbschlussErgebnis.lernortWohnenInternat`): nur bei `massnahmeart ===
+   "bvb3"` erfassbar; `PUT /:id/abschluss-ergebnis` lehnt einen gesetzten
+   Wert bei BvB 1/BvB 2 serverseitig ab (`400 bvb3_field_not_applicable`).
+10. **Stabile Feld-IDs**: die 22 Felder des Abschluss-Moduls und ihre
+    TypeScript-Bezeichner sind 1:1 im Migrationsplan (Abschnitt 3.4)
+    dokumentiert, um eine spätere Zuordnung zu einem offiziellen BA-Vordruck
+    zu erleichtern.
+11. **Erweiterte Nachvalidierung**: die bestehende semantische
+    Faktenprüfung (`validation/semanticFactCheck.ts`) sowie die
+    Privacy-Gateway-Allowlist wurden um die neuen Abschluss-Modul-Felder
+    ergänzt (siehe Punkt 8); die grundsätzliche Architektur der
+    Nachvalidierung (Existenzprüfung referenzierter Evidence-IDs,
+    Faktenabdeckung) bleibt unverändert bestehen.
+12. **Tests**: 16 neue Testfälle in `v03_ph17.test.ts` – die vollständige
+    3×3-Testmatrix sowie alle vereinbarten Negativtests (siehe nächster
+    Abschnitt) – plus vollständige Regressionssuite aus Version 0.1/0.2/PH-15
+    v1.1 (insgesamt 54 Tests).
+
+**Nicht Teil dieser Ergänzung** (bewusst außerhalb des freigegebenen
+Entwicklungsauftrags V0.2, keine eigenständige Umfangserweiterung): D-01,
+D-11, D-12, D-13, KO-06, B-02 sind laut Nutzer interne JobB-Unterlagen und
+wurden nicht als externe Testgrundlage herangezogen – stattdessen wurde die
+in Entscheidung 5 vereinbarte eigene 3×3-Matrix aufgebaut.
+
+**Frontend**: Maßnahmeart-Auswahl ohne Vorbelegung, Anlass-/
+Verlängerungstermin-Felder, Maßnahmeziel/Begründung, Rollen-Zuordnung je
+Förderziel und das vollständige Abschluss-Modul (inkl. HUMAN_CONFIRMED-
+Bestätigungs-Buttons) sind in den React-Wizard integriert
+(`frontend/src/components/steps/Step1BaseData.tsx`,
+`Step6SupportNeeds.tsx`, `Step7Preview.tsx`).
+
+**Einzeldatei-Artifact**: die Artifact-Version (separat unter
+`https://claude.ai/code/artifact/7be240cc-a98f-4540-9044-0a2674347645`
+veröffentlicht) wurde für PH-17 V1.0 / Entwicklungsauftrag V0.2 **noch nicht
+aktualisiert** und bildet weiterhin den Stand PH-15 Arbeitsfassung 1.1 ab
+(binäre Maßnahmeart, kein Anlass-/Maßnahmeziel-/Abschluss-Modul-Feld). Dies
+ist eine bewusste, im Abschnitt [Bekannte offene
+Punkte](#bekannte-offene-punkte) dokumentierte Priorisierungsentscheidung
+(Umfang/Risiko einer rein clientseitigen, ungetesteten
+Parallel-Implementierung ohne Type-Checker) und **kein** stillschweigend
+weggelassener Teil des Auftrags.
+
+## Testbericht (PASS/FAIL) und 3×3-Testmatrix
+
+Stand: vollständiger Lauf der Backend-Vitest-Suite unmittelbar vor der
+Auslieferung dieser Version. **Alle 54 Tests PASS**, keine bekannten
+fehlschlagenden Tests.
+
+```
+Test Files  8 passed (8)
+     Tests  54 passed (54)
+```
+
+| Datei | Tests | Status |
+|---|---|---|
+| `aiMock.test.ts` | 3 | ✅ PASS |
+| `privacyGateway.test.ts` | 2 | ✅ PASS |
+| `comparisonLogic.test.ts` | 3 | ✅ PASS |
+| `apiFlows.test.ts` | 4 | ✅ PASS |
+| `domainRules.test.ts` | 7 | ✅ PASS |
+| `v02.test.ts` | 10 | ✅ PASS |
+| `v02_ph15_v11.test.ts` | 9 | ✅ PASS |
+| `v03_ph17.test.ts` | 16 | ✅ PASS |
+
+### 3×3-Testmatrix (START/VERLAUF/ABSCHLUSS × BvB 1/BvB 2/BvB 3)
+
+Alle 9 Kombinationen werden End-to-End über die REST-API angelegt und
+geprüft: korrekt gesetzte Maßnahmeart, zur LUV-Art passendes
+Abschnitts-Skelett **ohne** `digital_competences`, `abschluss_ergebnis` nur
+bei Abschluss-LUV, sowie zur Maßnahmeart passende Fristenberechnung (BvB 3 =
+7 statt 6 Monate bis zur ersten Verlaufs-LUV).
+
+| # | LUV-Art | Maßnahmeart | Ergebnis |
+|---|---|---|---|
+| 1 | START | BvB 1 | ✅ PASS |
+| 2 | VERLAUF | BvB 1 | ✅ PASS |
+| 3 | ABSCHLUSS | BvB 1 | ✅ PASS |
+| 4 | START | BvB 2 | ✅ PASS |
+| 5 | VERLAUF | BvB 2 | ✅ PASS |
+| 6 | ABSCHLUSS | BvB 2 | ✅ PASS |
+| 7 | START | BvB 3 | ✅ PASS |
+| 8 | VERLAUF | BvB 3 | ✅ PASS |
+| 9 | ABSCHLUSS | BvB 3 | ✅ PASS |
+
+### Negativtests
+
+| # | Szenario | Erwartetes Verhalten | Ergebnis |
+|---|---|---|---|
+| 1 | Maßnahmeziel „SV-Beschäftigung" ohne Begründung | Fallanlage wird bereits per Schema abgelehnt (`400 validation_error`) | ✅ PASS |
+| 1b | Dieselbe Konstellation **mit** ausgefüllter Begründung | Fallanlage und Freigabe funktionieren normal | ✅ PASS |
+| 2 | Bestätigter Förderbereich ohne Beleg (weder Beobachtungsstichpunkte noch Evidenz) | Förderzielvorschläge (`kind: blocked_pre_validation`) **und** Freigabe (`409 pre_validation_blocked`) werden blockiert | ✅ PASS |
+| 3 | Abschluss-LuV ohne HUMAN_CONFIRMED (Ausbildungsreife/Berufseignung/Unterstützungsbedarf) | Freigabe wird blockiert (`409`); nach aktiver Bestätigung aller drei Felder ist die Freigabe möglich | ✅ PASS |
+| 4 | BvB-3-Sonderfeld „Lernort Wohnen/Internat" bei BvB 2 gesetzt | Wird abgelehnt (`400 bvb3_field_not_applicable`); bei BvB 3 wird derselbe Wert angenommen | ✅ PASS |
+| 5 | Verlaufs-LUV ohne bestätigte, vergleichbare Vergleichszeitpunkte | Keine erfundene Entwicklung – `kind: insufficient_data` | ✅ PASS |
+| 6 | Direkte Identifikatoren des Abschluss-Moduls (Ansprechperson, Träger/Einrichtung) in einem KI-Payload | Werden vom Privacy Gateway rekursiv entfernt, bevor der Payload Claude erreichen würde | ✅ PASS |
+| 7 (Regression) | KI-Satz mit erfundener/nicht existenter Evidence-ID (`V02-T05`) | Wird unabhängig vom Claude-Ergebnis technisch als unbelegt erkannt | ✅ PASS |
+
+Alle Negativtests laufen automatisiert in `v03_ph17.test.ts` bzw. (Test 7)
+regressionsgeschützt in `v02.test.ts`; keiner davon erfordert einen echten
+Anthropic-API-Key (Testmodus, siehe [Testmodus](#testmodus-ohne-api-key)).
+
 ## Bekannte offene Punkte
 
 Alle mit `TODO: fachlich abgleichen` im Code markierten Stellen sind bewusst
@@ -497,6 +705,40 @@ abgestimmt werden. Insbesondere:
   in das offizielle Muster-LUV gehören und welche nur interne
   Prozessdokumentation sind, ist offen.
 
+### Neu seit PH-17 V1.0 / Entwicklungsauftrag V0.2
+
+- **Einzeldatei-Artifact noch nicht auf PH-17/V0.2 portiert** (siehe
+  [PH-17-Abschnitt](#ph-17-v10--entwicklungsauftrag-v02--ergänzungen)):
+  bildet weiterhin den PH-15-v1.1-Stand ab. Die Vollversion
+  (Backend+Frontend, dieses Repository) ist der maßgebliche, vollständig
+  getestete Stand von Version 0.2.
+- **Rollenzuordnung „Lernort Wohnen" nur bei BvB 3** (`domain/supportLogic.ts:
+  rollenForMassnahmeart`) ist eine dokumentierte Annahme, da PH-17 die genaue
+  Zuordnung der übrigen 8 Rollen zu einzelnen Maßnahmearten nicht
+  spezifiziert – noch fachlich zu bestätigen.
+- **Abschluss-Modul-Rendering** (`luv_composer/renderAbschlussErgebnis.ts`)
+  ist eine erste deterministische Textzusammenführung der bestätigten Felder;
+  die exakte Formulierungs-/Reihenfolgekonvention für den offiziellen
+  BA-Abschluss-LuV-Vordruck (Layout, Feldbeschriftungen) ist noch nicht mit
+  dem tatsächlichen Formular abgeglichen (kein Vordruck-PDF im Auftrag
+  enthalten).
+- **Feld 3 „Übermittlungsanlass" vs. Verlauf-„Anlass"**: bewusst als eigener,
+  zweiwertiger Enum umgesetzt (regulär/vorzeitig), getrennt vom vierwertigen
+  Verlauf-Anlass – eine technische Ableitung aus der bestehenden Architektur,
+  keine im Auftrag ausdrücklich spezifizierte Eigenschaft; siehe
+  Migrationsplan Abschnitt 3.4 „Umsetzungshinweise".
+- **Kompetenzanalyse-Dauer-Hinweis für BvB 2/BvB 3**: seit PH-17 bewusst
+  deaktiviert (kein Hinweis mehr), da keine verbindliche fachliche Grundlage
+  vorliegt (Migrationsplan Entscheidung 7) – bis eine solche Grundlage
+  vorliegt, bleibt dies technisch korrekt, aber fachlich „stumm".
+- **Demo-Fälle (A–G)** verwenden nach der Migration technisch gültige
+  Maßnahmeart-Werte (`bvb1`/`bvb2`), sind inhaltlich aber weiterhin an der
+  PH-15-v1.1-Erzählung orientiert und decken die neuen PH-17-Felder
+  (Anlass, Maßnahmeziel, Abschluss-Modul) nicht in der Demo-Erzählung ab; die
+  fachliche Korrektheit der neuen Logik selbst ist vollständig über die
+  automatisierte 3×3-Testmatrix (`v03_ph17.test.ts`) abgesichert, nicht über
+  die Demo-Fälle.
+
 ## Vorschläge für Version 0.3
 
 *(Getrennt vom aktuellen Code, nicht automatisch umgesetzt – Version 0.2
@@ -521,3 +763,11 @@ erweitert sich nicht eigenständig über PH-15 hinaus.)*
 - Feingranulareres Prompt-Versionierungs- und A/B-Test-Konzept inkl.
   Änderungsprotokoll pro Prompt-Version.
 - Barrierefreiheits-Audit (WCAG) der Wizard-Oberfläche.
+- Portierung der Einzeldatei-Artifact-Version auf PH-17 V1.0 /
+  Entwicklungsauftrag V0.2 (Maßnahmeart BvB 1/2/3, Anlass-/
+  Maßnahmeziel-Felder, Abschluss-Modul mit HUMAN_CONFIRMED, Vorvalidierung).
+- Erweiterung der Demo-Fälle um eine vollständige 3×3-Erzählmatrix
+  (START/VERLAUF/ABSCHLUSS × BvB 1/BvB 2/BvB 3) analog zur automatisierten
+  Testmatrix, inkl. Abschluss-Modul-Beispielangaben.
+- Abgleich des Abschluss-Modul-Renderings mit dem tatsächlichen Layout des
+  offiziellen BA-Abschluss-LuV-Vordrucks, sobald dieser als Datei vorliegt.

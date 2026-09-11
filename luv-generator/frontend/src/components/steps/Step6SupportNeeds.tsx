@@ -12,6 +12,8 @@ import {
   GoalPriority,
   MeasureLibraryEntry,
   RATING_LABELS,
+  Rolle,
+  ROLLE_LABELS,
   SOURCE_LABELS,
   SupportGoal
 } from "../../types.js";
@@ -44,6 +46,7 @@ export function Step6SupportNeeds({
   const [error, setError] = useState<string | null>(null);
   const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null);
   const [measureLibrary, setMeasureLibrary] = useState<MeasureLibraryEntry[]>([]);
+  const [rollen, setRollen] = useState<{ id: Rolle; label: string }[]>([]);
 
   useEffect(() => {
     api
@@ -51,6 +54,13 @@ export function Step6SupportNeeds({
       .then(setMeasureLibrary)
       .catch(() => setMeasureLibrary([]));
   }, []);
+
+  useEffect(() => {
+    api
+      .get<{ id: Rolle; label: string }[]>(`/api/catalog/rollen?massnahmeart=${record.baseData.massnahmeart}`)
+      .then(setRollen)
+      .catch(() => setRollen([]));
+  }, [record.baseData.massnahmeart]);
 
   async function setAreaStatus(areaId: string, status: "confirmed" | "rejected" | "pending") {
     const updated = await api.put<CaseRecord>(`/api/cases/${record.id}/support-areas/${areaId}`, { status }).then(
@@ -63,7 +73,12 @@ export function Step6SupportNeeds({
     setSuggesting(true);
     setError(null);
     try {
-      await api.post(`/api/cases/${record.id}/ai/support-goals/suggest`, {});
+      const result = await api.post<{ kind: string; reason?: string }>(`/api/cases/${record.id}/ai/support-goals/suggest`, {});
+      if (result.kind === "blocked_pre_validation") {
+        // Migrationsplan 0.1->0.2 Entscheidung 3: Förderbedarf ohne Beleg = harter Blocker.
+        setError(result.reason ?? "Generierung durch Vorvalidierung blockiert.");
+        return;
+      }
       const updated = await api.get<CaseRecord>(`/api/cases/${record.id}`);
       onUpdated(updated);
     } catch (err) {
@@ -238,6 +253,17 @@ export function Step6SupportNeeds({
                     {(Object.entries(PRIORITY_LABELS) as [GoalPriority, string][]).map(([v, label]) => (
                       <option key={v} value={v}>
                         {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Rolle (rollenbezogene Zielvereinbarung)</label>
+                  <select value={goal.rolle ?? ""} onChange={(e) => updateGoal(goal, { rolle: (e.target.value || undefined) as Rolle | undefined })}>
+                    <option value="">(nicht zugeordnet)</option>
+                    {rollen.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.label}
                       </option>
                     ))}
                   </select>

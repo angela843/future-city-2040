@@ -2,8 +2,10 @@ import { Router } from "express";
 import { asyncHandler } from "../asyncHandler.js";
 import { COMPETENCE_CATALOG } from "../../domain/competenceCatalog.js";
 import { MEASURE_LIBRARY } from "../../domain/measureLibrary.js";
-import { BA_FOERDERZIELBEREICHE, MASSNAHMEART_VALUES } from "../../domain/types.js";
-import { BA_FOERDERZIELBEREICH_LABELS, MASSNAHMEART_LABELS } from "../../domain/labels.js";
+import { BA_FOERDERZIELBEREICHE, MASSNAHMEART_VALUES, Massnahmeart } from "../../domain/types.js";
+import { BA_FOERDERZIELBEREICH_LABELS, MASSNAHMEART_LABELS, ROLLE_LABELS } from "../../domain/labels.js";
+import { rollenForMassnahmeart } from "../../domain/supportLogic.js";
+import { MassnahmeartSchema } from "../../validation/requestSchemas.js";
 
 export const catalogRouter = Router();
 
@@ -31,10 +33,23 @@ catalogRouter.get(
   })
 );
 
-/** PH-15 v1.1 Abschnitt 3: Massnahmearten BvB/BvB-Reha. */
+/** PH-17 V1.0: Massnahmearten BvB 1/BvB 2/BvB 3 - keine technische Vorbelegung/Default. */
 catalogRouter.get(
   "/massnahmearten",
   asyncHandler(async (_req, res) => {
     res.json(MASSNAHMEART_VALUES.map((id) => ({ id, label: MASSNAHMEART_LABELS[id] })));
+  })
+);
+
+/**
+ * Migrationsplan 0.1->0.2 Entscheidung 8: rollenbezogene Zielvereinbarung mit
+ * massnahmeabhaengiger Sichtbarkeit (Rollenliste je Massnahmeart).
+ */
+catalogRouter.get(
+  "/rollen",
+  asyncHandler(async (req, res) => {
+    const parsed = MassnahmeartSchema.safeParse(req.query.massnahmeart);
+    const massnahmeart: Massnahmeart = parsed.success ? parsed.data : "bvb1";
+    res.json(rollenForMassnahmeart(massnahmeart).map((id) => ({ id, label: ROLLE_LABELS[id] })));
   })
 );

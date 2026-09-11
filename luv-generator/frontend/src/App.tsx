@@ -39,7 +39,7 @@ export default function App() {
     <div className="app-shell">
       <TestBanner />
       <header className="app-header">
-        <h1>LUV-Generator – BvB / BvB Reha (Version 0.1)</h1>
+        <h1>LUV-Generator – BvB 1/2/3 (Version 0.2)</h1>
         <p className="muted">
           Unterstützungswerkzeug für Start-, Verlaufs- und Abschluss-LUV. Keine Teilnehmerverwaltung, keine digitale
           Teilnehmerakte.

@@ -7,13 +7,52 @@
 export type LuvArt = "start" | "verlauf" | "abschluss";
 
 /**
- * Massnahmeart (Version 0.2 / PH-15 v1.1 Abschnitt 3). Steuert AUSSCHLIESSLICH
- * fachlich belegte Unterschiede (Kompetenzanalyse-Dauer-Hinweise, spaetere
- * Formular-/Template-Zuordnung). Keine kuenstlichen Unterschiede ohne fachliche
- * Grundlage (PH-15 v1.1 Abschnitt 3, MUSS).
+ * Massnahmeart (Version 0.2 / PH-17 V1.0). Dreistufig: BvB 1, BvB-Reha BvB 2,
+ * BvB-Reha BvB 3 - steuert fachlich belegte Unterschiede (Fristen, Rollen,
+ * BvB-3-Sonderfelder). Kein technischer Default - aktive Auswahl ist Pflicht
+ * (Migrationsplan 0.1->0.2, Entscheidung 6).
  */
-export const MASSNAHMEART_VALUES = ["bvb", "bvb_reha"] as const;
+export const MASSNAHMEART_VALUES = ["bvb1", "bvb2", "bvb3"] as const;
 export type Massnahmeart = (typeof MASSNAHMEART_VALUES)[number];
+
+/** PH-17 V1.0 Abschnitt 4: Anlass des Verlaufs-LUV, steuert die Fristformel. */
+export const VERLAUF_ANLASS_VALUES = ["regulaer", "vor_massnahmeende", "verlaengerung", "sonstiger_anlass"] as const;
+export type VerlaufAnlass = (typeof VERLAUF_ANLASS_VALUES)[number];
+
+/** PH-17 V1.0 / Entwicklungsauftrag B: Maßnahmeziel, im Start strukturiert festgelegt. */
+export const MASSNAHMEZIEL_VALUES = ["berufsausbildung", "sv_beschaeftigung"] as const;
+export type Massnahmeziel = (typeof MASSNAHMEZIEL_VALUES)[number];
+
+/**
+ * Rollen fuer die rollenbezogene Zielvereinbarung (Migrationsplan 0.1->0.2,
+ * Entscheidung 8, verbindliche Liste des Nutzers). "paedagogische Mitarbeitende
+ * Lernort Wohnen" ist massnahmeabhaengig (nur BvB 3, siehe rollenForMassnahmeart
+ * in supportLogic.ts).
+ */
+export const ROLLE_VALUES = [
+  "teilnehmende_person",
+  "bildungsbegleitung_case_management",
+  "ausbilder",
+  "lehrkraft",
+  "sozialpaedagogik",
+  "psychologe_psychologin",
+  "weiteres_fachpersonal",
+  "paedagogische_mitarbeitende_lernort_wohnen",
+  "gemeinsame_aufgaben"
+] as const;
+export type Rolle = (typeof ROLLE_VALUES)[number];
+
+/**
+ * Wiederverwendbares Muster fuer fachliche Einzelentscheidungen, die eine
+ * explizite menschliche Bestaetigung benoetigen (PH-17 / Entwicklungsauftrag:
+ * HUMAN_CONFIRMED). Claude darf `value` nie selbst setzen; `humanConfirmed`
+ * wird ausschliesslich durch eine aktive Aktion der Koordination auf true
+ * gesetzt.
+ */
+export interface HumanConfirmed<T> {
+  value: T;
+  humanConfirmed: boolean;
+}
 
 /**
  * Offizielle BA-Foerderzielbereiche (PH-15 v1.1 Abschnitt 8), technisch getrennt
@@ -180,6 +219,8 @@ export interface SupportGoal {
    * blockiert aber nichts.
    */
   foerderzielbereich?: BAFoerderzielbereich;
+  /** Rollenbezogene Zielvereinbarung (Migrationsplan 0.1->0.2, Entscheidung 8). */
+  rolle?: Rolle;
   status: GoalStatus;
   manualOverride: boolean;
 }
@@ -229,7 +270,7 @@ export interface BaseData {
   teilnehmerName: string;
   geburtsdatum: string | null;
   massnahme: string;
-  /** BvB oder BvB-Reha (PH-15 v1.1 Abschnitt 3, MUSS). */
+  /** BvB 1 / BvB-Reha BvB 2 / BvB-Reha BvB 3 (PH-17 V1.0, MUSS). Kein Default. */
   massnahmeart: Massnahmeart;
   eintrittsdatum: string;
   /**
@@ -245,6 +286,25 @@ export interface BaseData {
    * muss der tatsaechliche letzte Teilnahmetag manuell beruecksichtigt werden.
    */
   massnahmeEndeGeplant: string | null;
+  /**
+   * Anlass des Verlaufs-LUV (PH-17 V1.0 Abschnitt 4/6), nur bei luvArt="verlauf"
+   * relevant. Steuert, welche Fristformel gilt.
+   */
+  verlaufAnlass: VerlaufAnlass | null;
+  /** Nur bei verlaufAnlass="verlaengerung": Termin, auf den sich die Verlaengerungsfrist bezieht. */
+  verlaengerungstermin: string | null;
+  /**
+   * Massnahmeziel (Migrationsplan 0.1->0.2, Entscheidung 2). Wird im Start
+   * strukturiert festgelegt und im Abschluss nur referenziell angezeigt, nicht
+   * erneut abgefragt.
+   */
+  massnahmeziel: Massnahmeziel | null;
+  /**
+   * Pflicht-Freitext bei massnahmeziel="sv_beschaeftigung": Begruendung, weshalb
+   * das Ziel Berufsausbildung voraussichtlich nicht erreicht werden kann. Claude
+   * darf diesen Text NIE selbst erzeugen oder ableiten (Entscheidung 2).
+   */
+  begruendungKeineAusbildung: string;
   luvArt: LuvArt;
   beurteilungszeitraumVon: string;
   beurteilungszeitraumBis: string;
@@ -297,6 +357,95 @@ export interface Teilnehmerbesprechung {
   hinweisGrund: string;
 }
 
+/**
+ * Abschluss-Modul (PH-17 V1.0 / Migrationsplan 0.1->0.2, Entscheidung 9).
+ * Verbindliche 22-Felder-Struktur des offiziellen BA-Abschluss-LuV 10/2025,
+ * vom Nutzer vorgegeben - keine eigene Interpretation. Felder 2 (Art der
+ * Massnahme) und 22 (Besprechungsdatum) werden NICHT dupliziert, sondern aus
+ * `baseData.massnahmeart` bzw. `teilnehmerbesprechung.datum` referenziert.
+ */
+export type JaNein = "ja" | "nein";
+export type JaNeinNichtRelevant = "ja" | "nein" | "nicht_relevant";
+
+/** Feld 3: Uebermittlungsanlass - eigener, zweiwertiger Enum, NICHT identisch mit VerlaufAnlass. */
+export const UEBERMITTLUNGSANLASS_VALUES = ["regulaeres_ende", "vorzeitige_beendigung"] as const;
+export type Uebermittlungsanlass = (typeof UEBERMITTLUNGSANLASS_VALUES)[number];
+
+/** Nur bei uebermittlungsanlass="vorzeitige_beendigung" (PH-17 V1.0 Abschnitt 5). */
+export const VORZEITIGE_BEENDIGUNG_ART_VALUES = ["uebergang_ausbildung_arbeit", "abbruch"] as const;
+export type VorzeitigeBeendigungArt = (typeof VORZEITIGE_BEENDIGUNG_ART_VALUES)[number];
+
+export interface AbschlussErgebnis {
+  /** Feld 1: Abschluss-LUV vom. */
+  abschlussLuvVom: string | null;
+  /** Feld 3. */
+  uebermittlungsanlass: Uebermittlungsanlass | null;
+  /** Nur bei uebermittlungsanlass="vorzeitige_beendigung". */
+  vorzeitigeBeendigungArt: VorzeitigeBeendigungArt | null;
+
+  /**
+   * Felder 4-6, 8-12: direkte Identifikatoren. Rein lokale Erfassung fuer
+   * Pruefansicht/DOCX-Export - werden NIEMALS Teil eines Claude-Payloads
+   * (Privacy Gateway Allowlist enthaelt diese Schluessel bewusst nicht).
+   */
+  vorname: string;
+  nachname: string;
+  kundennummer: string;
+  /** Feld 7: nur bei massnahmeart="bvb3" erfasst/angezeigt. */
+  lernortWohnenInternat: JaNein | null;
+  traegerEinrichtung: string;
+  ansprechpersonVorname: string;
+  ansprechpersonNachname: string;
+  telefon: string;
+  email: string;
+
+  /** Feld 13. */
+  hauptschulabschlussErreicht: JaNeinNichtRelevant | null;
+  /** Feld 14: HUMAN_CONFIRMED, Claude leitet dies nie selbst ab. */
+  ausbildungsreifeErreicht: HumanConfirmed<JaNein | null>;
+  /** Feld 15 (Freitext: Berufe/Qualifikationsniveau): HUMAN_CONFIRMED. */
+  berufseignung: HumanConfirmed<string>;
+  /** Feld 16 (optional). */
+  qualifizierungsAusbildungsbausteine: string;
+  /** Feld 17. */
+  vermittlungsfaehigkeit: string;
+  /** Feld 18 (inkl. Begruendung, falls keine Eingliederung erfolgt ist). */
+  eingliederungsergebnis: string;
+  /** Feld 19: HUMAN_CONFIRMED, Claude leitet dies nie selbst ab. */
+  unterstuetzungsbedarf: HumanConfirmed<JaNein | null>;
+  /** Feld 20: nur Pflicht/relevant, wenn unterstuetzungsbedarf.value="ja". */
+  unterstuetzungsbedarfBeschreibungEmpfehlung: string;
+  /** Feld 21: Claude formuliert hier ausschliesslich bereits bestaetigte Angaben. */
+  stabilisierungFestigung: string;
+}
+
+/** Leerer Ausgangszustand bei Fallanlage - keine HUMAN_CONFIRMED-Entscheidung ist vorbelegt. */
+export function emptyAbschlussErgebnis(): AbschlussErgebnis {
+  return {
+    abschlussLuvVom: null,
+    uebermittlungsanlass: null,
+    vorzeitigeBeendigungArt: null,
+    vorname: "",
+    nachname: "",
+    kundennummer: "",
+    lernortWohnenInternat: null,
+    traegerEinrichtung: "",
+    ansprechpersonVorname: "",
+    ansprechpersonNachname: "",
+    telefon: "",
+    email: "",
+    hauptschulabschlussErreicht: null,
+    ausbildungsreifeErreicht: { value: null, humanConfirmed: false },
+    berufseignung: { value: "", humanConfirmed: false },
+    qualifizierungsAusbildungsbausteine: "",
+    vermittlungsfaehigkeit: "",
+    eingliederungsergebnis: "",
+    unterstuetzungsbedarf: { value: null, humanConfirmed: false },
+    unterstuetzungsbedarfBeschreibungEmpfehlung: "",
+    stabilisierungFestigung: ""
+  };
+}
+
 /** Vorheriger LUV-Text, wie er fuer Verlaufs-/Abschluss-LUV eingefuegt werden kann. */
 export interface PreviousLuvInput {
   rawText: string;
@@ -342,6 +491,7 @@ export interface LuvSection {
     | "support_goals"
     | "measures"
     | "overall_assessment"
+    | "abschluss_ergebnis"
     | "perspective";
   title: string;
   text: string;
@@ -433,6 +583,8 @@ export interface CaseRecord {
    */
   foerderzielbereichTracking: FoerderzielbereichTracking[];
   teilnehmerbesprechung: Teilnehmerbesprechung;
+  /** Abschluss-Modul (PH-17 V1.0, Migrationsplan Entscheidung 9). Nur bei luvArt="abschluss" fachlich relevant. */
+  abschlussErgebnis: AbschlussErgebnis;
   /** Muss durch aktive Bestaetigung der Koordination gesetzt werden. Claude darf dies nie setzen. */
   approvedForExport: boolean;
   approvalTimestamp: string | null;

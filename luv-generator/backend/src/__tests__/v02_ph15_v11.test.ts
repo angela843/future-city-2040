@@ -24,7 +24,7 @@ async function createBaseCase(overrides: Record<string, unknown> = {}) {
       teilnehmerName: "Test Person (fiktiv)",
       geburtsdatum: "2005-01-01",
       massnahme: "Testmaßnahme",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-01-01",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-01-01",
@@ -46,54 +46,68 @@ describe("PH-15 v1.1 - neue Testfaelle (Arbeitsfassung 1.1)", () => {
       teilnehmerName: "x",
       geburtsdatum: null,
       massnahme: "x",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-01-01",
       kompetenzanalyseEnde: "2026-02-01",
       massnahmeEndeGeplant: "2026-12-01",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-01-01",
       beurteilungszeitraumBis: "2026-03-01",
       koordination: "x"
     });
     expect(fristen.startLuvFaellig).toBe("2026-02-15");
-    // Erste Verlaufs-LUV: 6 Monate nach Massnahmebeginn (Eintrittsdatum), NICHT nach Kompetenzanalyse-Ende.
+    // Erste Verlaufs-LUV: 6 Monate nach Massnahmebeginn (Eintrittsdatum), NICHT nach Kompetenzanalyse-Ende. Gilt fuer BvB 1/BvB 2; BvB 3 = 7 Monate (siehe V02-T20ff).
     expect(fristen.ersteVerlaufsLuvFaellig).toBe("2026-07-01");
     // Weitere Verlaufs-LUV: 6 Wochen (42 Tage) vor Massnahmeende.
     expect(fristen.weitereVerlaufsLuvFaellig).toBe("2026-10-20");
     expect(fristen.abschlussLuvFaellig).toBe("2026-12-01");
   });
 
-  it("V02-T12: Kompetenzanalyse-Plausibilität - Hinweis (keine Blockade) bei Abweichung vom Regelfall je Massnahmeart", () => {
-    const bvbZuKurz = checkKompetenzanalyseDauer({
+  it("V02-T12: Kompetenzanalyse-Plausibilität - Hinweis (keine Blockade) nur fuer BvB 1; fuer BvB 2/BvB 3 keine Regel ohne verbindliche Grundlage (Migrationsplan 0.1->0.2 Entscheidung 7)", () => {
+    const bvb1ZuKurz = checkKompetenzanalyseDauer({
       teilnehmerName: "x",
       geburtsdatum: null,
       massnahme: "x",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-01-01",
       kompetenzanalyseEnde: "2026-01-08", // 1 Woche, unter dem Regelfall (3-5 Wochen)
       massnahmeEndeGeplant: null,
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-01-01",
       beurteilungszeitraumBis: "2026-03-01",
       koordination: "x"
     });
-    expect(bvbZuKurz.ok).toBe(false);
-    expect(bvbZuKurz.hinweis).toBeTruthy();
+    expect(bvb1ZuKurz.ok).toBe(false);
+    expect(bvb1ZuKurz.hinweis).toBeTruthy();
 
-    const bvbRehaImRegelfall = checkKompetenzanalyseDauer({
+    // BvB 2 (ehem. "BvB-Reha"): keine ungeprüfte Übertragung der alten "4-8 Wochen"-Regel -
+    // ohne verbindliche fachliche Grundlage gibt es fuer BvB 2/BvB 3 unconditional keinen Hinweis.
+    const bvb2OhneRegel = checkKompetenzanalyseDauer({
       teilnehmerName: "x",
       geburtsdatum: null,
       massnahme: "x",
-      massnahmeart: "bvb_reha",
+      massnahmeart: "bvb2",
       eintrittsdatum: "2026-01-01",
-      kompetenzanalyseEnde: "2026-02-12", // ca. 6 Wochen, Regelfall BvB-Reha
+      kompetenzanalyseEnde: "2026-02-12",
       massnahmeEndeGeplant: null,
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-01-01",
       beurteilungszeitraumBis: "2026-03-01",
       koordination: "x"
     });
-    expect(bvbRehaImRegelfall.ok).toBe(true);
+    expect(bvb2OhneRegel.ok).toBe(true);
   });
 
   it("V02-T13: Förderziel ohne BA-Förderzielbereich löst Qualitätswarnung aus, keine Blockade", async () => {
@@ -176,8 +190,8 @@ describe("PH-15 v1.1 - neue Testfaelle (Arbeitsfassung 1.1)", () => {
   });
 
   it("V02-T17: Massnahmeart BvB-Reha selbst wird NICHT blockiert (nur die sensible Angabe)", async () => {
-    const res = await createBaseCase({ massnahmeart: "bvb_reha", massnahme: "Berufsvorbereitende Bildungsmaßnahme Reha (BvB-Reha)" });
-    expect(res.baseData.massnahmeart).toBe("bvb_reha");
+    const res = await createBaseCase({ massnahmeart: "bvb2", massnahme: "Berufsvorbereitende Bildungsmaßnahme Reha (BvB-Reha)" });
+    expect(res.baseData.massnahmeart).toBe("bvb2");
 
     // Ein harmloser Abschnitt mit derselben Massnahmeart darf regulaer verarbeitet werden -
     // "BvB-Reha" als Begriff selbst loest KEINE Privacy-Blockade aus.

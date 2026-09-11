@@ -2,8 +2,10 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { ApiError, asyncHandler, notFoundCase } from "../asyncHandler.js";
 import { getCase, createCase, putCase } from "../store.js";
+import { emptyAbschlussErgebnis } from "../../domain/types.js";
 import { logEvent } from "../logger.js";
 import {
+  AbschlussErgebnisSchema,
   ApprovalSchema,
   BaseDataSchema,
   CareerInfoSchema,
@@ -27,8 +29,10 @@ import { compareRatings } from "../../domain/comparisonLogic.js";
 import { ensureSectionSkeleton, setSectionText } from "../../luv_composer/composer.js";
 import { findRedundancies, checkSimilarityToPreviousText } from "../../luv_composer/redundancyCheck.js";
 import { renderSupportGoalsSectionText } from "../../luv_composer/renderGoals.js";
+import { renderAbschlussErgebnisSectionText } from "../../luv_composer/renderAbschlussErgebnis.js";
 import { runQualityCheck } from "../../domain/qualityCheck.js";
 import { runReleaseCheck } from "../../domain/releaseCheck.js";
+import { checkAbschlussHumanConfirmed, checkFoerderbedarfBeleg, checkGeneralPreValidation } from "../../domain/preValidation.js";
 import { checkForClarification } from "../../domain/clarificationAssistant.js";
 import { checkKompetenzanalyseDauer, computeFristen } from "../../domain/fristenLogic.js";
 
@@ -43,7 +47,10 @@ casesRouter.post(
         ...baseData,
         geburtsdatum: baseData.geburtsdatum ?? null,
         kompetenzanalyseEnde: baseData.kompetenzanalyseEnde ?? null,
-        massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null
+        massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null,
+        verlaufAnlass: baseData.verlaufAnlass ?? null,
+        verlaengerungstermin: baseData.verlaengerungstermin ?? null,
+        massnahmeziel: baseData.massnahmeziel ?? null
       },
       startingSituation: { schulabschluss: "nicht_bekannt", beruflicheVorerfahrung: [], bisherigePraktika: "", ausgangssituation: "" },
       subCompetences: [],
@@ -73,6 +80,7 @@ casesRouter.post(
         besprechungNichtMoeglich: false,
         hinweisGrund: ""
       },
+      abschlussErgebnis: emptyAbschlussErgebnis(),
       approvedForExport: false,
       approvalTimestamp: null
     });
@@ -102,7 +110,10 @@ casesRouter.put(
       ...baseData,
       geburtsdatum: baseData.geburtsdatum ?? null,
       kompetenzanalyseEnde: baseData.kompetenzanalyseEnde ?? null,
-      massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null
+      massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null,
+      verlaufAnlass: baseData.verlaufAnlass ?? null,
+      verlaengerungstermin: baseData.verlaengerungstermin ?? null,
+      massnahmeziel: baseData.massnahmeziel ?? null
     };
     record.sections = ensureSectionSkeleton(record);
     putCase(record);
@@ -386,9 +397,50 @@ casesRouter.put(
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
     record.teilnehmerbesprechung = TeilnehmerbesprechungSchema.parse(req.body);
+
+    // Feld 22 des Abschluss-Moduls nutzt Teilnehmerbesprechung.datum weiter (keine
+    // Duplizierung) - der Abschluss-Abschnitt wird deshalb hier mit re-gerendert.
+    if (record.sections.some((s) => s.key === "abschluss_ergebnis")) {
+      const renderedText = renderAbschlussErgebnisSectionText(record.abschlussErgebnis, record.baseData, record.teilnehmerbesprechung);
+      const applyResult = setSectionText(record.sections, "abschluss_ergebnis", renderedText, [], [], { manualEdit: false });
+      if (applyResult.applied) {
+        record.sections = applyResult.sections;
+      }
+    }
+
     putCase(record);
     logEvent("teilnehmerbesprechung_updated", { caseId: record.id });
     res.json(record);
+  })
+);
+
+casesRouter.put(
+  "/:id/abschluss-ergebnis",
+  asyncHandler(async (req, res) => {
+    const record = getCase(req.params.id);
+    if (!record) throw notFoundCase();
+    const input = AbschlussErgebnisSchema.parse(req.body);
+
+    // Migrationsplan 0.1->0.2 Abschnitt 3 Punkt 7: das BvB-3-Sonderfeld "Lernort
+    // Wohnen/Internat" darf ausserhalb von BvB 3 weder erfasst noch angenommen werden.
+    if (record.baseData.massnahmeart !== "bvb3" && input.lernortWohnenInternat !== null) {
+      throw new ApiError(
+        400,
+        "bvb3_field_not_applicable",
+        'Das Feld „Lernort Wohnen/Internat" ist ein BvB-3-Sonderfeld und darf bei dieser Maßnahmeart nicht gesetzt werden.'
+      );
+    }
+
+    record.abschlussErgebnis = input;
+    const renderedText = renderAbschlussErgebnisSectionText(record.abschlussErgebnis, record.baseData, record.teilnehmerbesprechung);
+    const applyResult = setSectionText(record.sections, "abschluss_ergebnis", renderedText, [], [], { manualEdit: false });
+    if (applyResult.applied) {
+      record.sections = applyResult.sections;
+    }
+
+    putCase(record);
+    logEvent("abschluss_ergebnis_updated", { caseId: record.id });
+    res.json({ abschlussErgebnis: record.abschlussErgebnis, sections: record.sections });
   })
 );
 
@@ -424,6 +476,22 @@ casesRouter.post(
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
     ApprovalSchema.parse(req.body);
+
+    // Migrationsplan 0.1->0.2 Abschnitt 2.3 (Entscheidungen 2, 3): harte
+    // Vorvalidierungs-Blocker gelten auch vor der finalen Freigabe, nicht nur vor
+    // einzelnen KI-Aufrufen.
+    const generalPreValidation = checkGeneralPreValidation(record);
+    if (generalPreValidation.blocked) {
+      throw new ApiError(409, "pre_validation_blocked", generalPreValidation.reason ?? "Freigabe blockiert.");
+    }
+    const foerderbedarfPreValidation = checkFoerderbedarfBeleg(record);
+    if (foerderbedarfPreValidation.blocked) {
+      throw new ApiError(409, "pre_validation_blocked", foerderbedarfPreValidation.reason ?? "Freigabe blockiert.");
+    }
+    const abschlussHumanConfirmed = checkAbschlussHumanConfirmed(record);
+    if (abschlussHumanConfirmed.blocked) {
+      throw new ApiError(409, "pre_validation_blocked", abschlussHumanConfirmed.reason ?? "Freigabe blockiert.");
+    }
 
     // Version 0.2 (PH-15 Abschnitt 43, MUSS): rote, nicht manuell geprüfte Abschnitte
     // duerfen nicht freigegeben werden. Diese Regel wird hier technisch durchgesetzt,

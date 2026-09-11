@@ -18,9 +18,19 @@ import { areaLabelForSection, sourceNotesForSection } from "../../domain/section
 import { isConfirmedComparableDevelopment } from "../../domain/comparisonLogic.js";
 import { LuvSection, SupportGoal } from "../../domain/types.js";
 import { MEASURE_LIBRARY } from "../../domain/measureLibrary.js";
+import { checkFoerderbedarfBeleg, checkGeneralPreValidation, PreValidationBlock } from "../../domain/preValidation.js";
 import { nanoid } from "nanoid";
 
 export const aiRouter = Router();
+
+/**
+ * Migrationsplan 0.1->0.2 Abschnitt 2.3: die Vorvalidierung laeuft vor JEDEM
+ * runAiTask-Aufruf. Ein harter Blocker verweigert die Generierung technisch
+ * (kein Claude-Aufruf) statt nur zu warnen.
+ */
+function blockedPreValidationBody(block: PreValidationBlock) {
+  return { kind: "blocked_pre_validation" as const, reason: block.reason ?? "Generierung blockiert." };
+}
 
 function resultToHttp(result: AiServiceResult) {
   switch (result.kind) {
@@ -50,6 +60,11 @@ aiRouter.post(
   asyncHandler(async (req, res) => {
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
+    const preBlock = checkGeneralPreValidation(record);
+    if (preBlock.blocked) {
+      res.json(blockedPreValidationBody(preBlock));
+      return;
+    }
     const input = StructureNotesRequestSchema.parse(req.body);
     const payload = structureNotesPayload(input.areaLabel, input.rawNotes, input.sourceTypes);
     const evidenceIds = record.evidence.map((e) => e.id);
@@ -60,10 +75,13 @@ aiRouter.post(
   })
 );
 
+// Migrationsplan 0.1->0.2 Abschnitt 2.4: "digitale Kompetenzen" ist kein eigenstaendiger
+// offizieller LUV-Ausgabeabschnitt mehr (bleibt nur interner Erhebungsbereich in Schritt 3).
+// SECTION_KEYS listet daher nur noch Abschnitte, die tatsaechlich in sectionOrderForLuvArt
+// vorkommen koennen; "digital_competences" ist hier bewusst NICHT mehr enthalten.
 const SECTION_KEYS: LuvSection["key"][] = [
   "initial_situation",
   "school_competences",
-  "digital_competences",
   "personal_competences",
   "social_competences",
   "methodical_competences",
@@ -80,6 +98,19 @@ aiRouter.post(
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
     const key = req.params.key as LuvSection["key"];
+
+    const preBlock = checkGeneralPreValidation(record);
+    if (preBlock.blocked) {
+      res.json(blockedPreValidationBody(preBlock));
+      return;
+    }
+    if (key === "support_needs") {
+      const belegBlock = checkFoerderbedarfBeleg(record);
+      if (belegBlock.blocked) {
+        res.json(blockedPreValidationBody(belegBlock));
+        return;
+      }
+    }
 
     if (key === "development") {
       const confirmedClaims = record.comparisonClaims.filter((c) => isConfirmedComparableDevelopment(c.suggestedStatus, c.confirmed));
@@ -160,6 +191,16 @@ aiRouter.post(
   asyncHandler(async (req, res) => {
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
+    const preBlock = checkGeneralPreValidation(record);
+    if (preBlock.blocked) {
+      res.json(blockedPreValidationBody(preBlock));
+      return;
+    }
+    const belegBlock = checkFoerderbedarfBeleg(record);
+    if (belegBlock.blocked) {
+      res.json(blockedPreValidationBody(belegBlock));
+      return;
+    }
     const confirmedAreas = record.supportAreaCandidates.filter((a) => a.status === "confirmed");
     if (confirmedAreas.length === 0) {
       // Test 8: Förderziel ohne bestätigten Förderbedarf -> blockieren.
@@ -229,6 +270,11 @@ aiRouter.post(
   asyncHandler(async (req, res) => {
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
+    const preBlock = checkGeneralPreValidation(record);
+    if (preBlock.blocked) {
+      res.json(blockedPreValidationBody(preBlock));
+      return;
+    }
     const confirmedGoals = record.supportGoals.filter((g) =>
       ["uebernommen", "bearbeitet", "neu_formuliert"].includes(g.status)
     );
@@ -258,6 +304,11 @@ aiRouter.post(
   asyncHandler(async (req, res) => {
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
+    const preBlock = checkGeneralPreValidation(record);
+    if (preBlock.blocked) {
+      res.status(200).json({ sections: record.sections, appliedKeys: [], rejectedKeys: [], aiUnavailable: false, message: preBlock.reason });
+      return;
+    }
     const outcome = await applyOverallRedaction(record);
     record.sections = outcome.sections;
     putCase(record);

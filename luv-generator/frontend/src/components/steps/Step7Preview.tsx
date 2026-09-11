@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import { api, downloadDocx, fetchText } from "../../api/client.js";
 import {
+  AbschlussErgebnis,
   CaseRecord,
   EVIDENCE_STATUS_LABELS,
+  JA_NEIN_LABELS,
+  JA_NEIN_NICHT_RELEVANT_LABELS,
+  JaNein,
+  JaNeinNichtRelevant,
   LuvSection,
   QualityCheckResult,
   ReleaseCheckResult,
-  Teilnehmerbesprechung
+  Teilnehmerbesprechung,
+  UEBERMITTLUNGSANLASS_LABELS,
+  UEBERMITTLUNGSANLASS_VALUES,
+  Uebermittlungsanlass,
+  VORZEITIGE_BEENDIGUNG_ART_LABELS,
+  VORZEITIGE_BEENDIGUNG_ART_VALUES,
+  VorzeitigeBeendigungArt
 } from "../../types.js";
 
 type GenerateResult =
@@ -14,6 +25,7 @@ type GenerateResult =
   | { kind: "insufficient_data"; questions: string[] }
   | { kind: "conflict"; conflicts: string[] }
   | { kind: "blocked_privacy"; reason: string }
+  | { kind: "blocked_pre_validation"; reason: string }
   | { kind: "invalid_schema"; message: string }
   | { kind: "unavailable"; message: string };
 
@@ -48,6 +60,9 @@ export function Step7Preview({
   const [groundingOpenFor, setGroundingOpenFor] = useState<string | null>(null);
   const [tbForm, setTbForm] = useState<Teilnehmerbesprechung>(record.teilnehmerbesprechung);
   const [tbSaving, setTbSaving] = useState(false);
+  const [abForm, setAbForm] = useState<AbschlussErgebnis>(record.abschlussErgebnis);
+  const [abSaving, setAbSaving] = useState(false);
+  const [abError, setAbError] = useState<string | null>(null);
 
   const visibleSections = record.sections.filter((s) => s.text.trim().length > 0 || true);
 
@@ -141,6 +156,23 @@ export function Step7Preview({
       onUpdated(updated);
     } finally {
       setTbSaving(false);
+    }
+  }
+
+  async function saveAbschlussErgebnis(next: AbschlussErgebnis) {
+    setAbForm(next);
+    setAbSaving(true);
+    setAbError(null);
+    try {
+      const res = await api.put<{ abschlussErgebnis: AbschlussErgebnis; sections: LuvSection[] }>(
+        `/api/cases/${record.id}/abschluss-ergebnis`,
+        next
+      );
+      onUpdated({ ...record, abschlussErgebnis: res.abschlussErgebnis, sections: res.sections });
+    } catch (err) {
+      setAbError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
+    } finally {
+      setAbSaving(false);
     }
   }
 
@@ -293,6 +325,11 @@ export function Step7Preview({
                 Datenschutzprüfung erforderlich: {(genResult[section.key] as { reason: string }).reason}
               </div>
             )}
+            {genResult[section.key]?.kind === "blocked_pre_validation" && (
+              <div className="notice error">
+                Vorvalidierung blockiert die Generierung: {(genResult[section.key] as { reason: string }).reason}
+              </div>
+            )}
           </div>
         );
       })}
@@ -353,6 +390,268 @@ export function Step7Preview({
         )}
         {tbSaving && <p className="muted">Speichere…</p>}
       </div>
+
+      {record.baseData.luvArt === "abschluss" && (
+        <div className="section-block">
+          <h3>Abschluss-Modul (offizieller BA-Abschluss-LuV 10/2025)</h3>
+          <p className="muted">
+            Vorname, Nachname, Kundennummer, Träger/Einrichtung, Ansprechperson, Telefon und E-Mail sind direkte
+            Identifikatoren und verbleiben ausschließlich lokal - sie werden niemals an Claude übermittelt.
+          </p>
+
+          <div className="grid-2">
+            <div className="field">
+              <label>Abschluss-LuV vom</label>
+              <input
+                type="date"
+                value={abForm.abschlussLuvVom ?? ""}
+                onChange={(e) => saveAbschlussErgebnis({ ...abForm, abschlussLuvVom: e.target.value || null })}
+              />
+            </div>
+            <div className="field">
+              <label>Übermittlungsanlass</label>
+              <select
+                value={abForm.uebermittlungsanlass ?? ""}
+                onChange={(e) =>
+                  saveAbschlussErgebnis({ ...abForm, uebermittlungsanlass: (e.target.value || null) as Uebermittlungsanlass | null })
+                }
+              >
+                <option value="">(nicht gesetzt)</option>
+                {UEBERMITTLUNGSANLASS_VALUES.map((v) => (
+                  <option key={v} value={v}>
+                    {UEBERMITTLUNGSANLASS_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {abForm.uebermittlungsanlass === "vorzeitige_beendigung" && (
+            <div className="field">
+              <label>Art der vorzeitigen Beendigung</label>
+              <select
+                value={abForm.vorzeitigeBeendigungArt ?? ""}
+                onChange={(e) =>
+                  saveAbschlussErgebnis({ ...abForm, vorzeitigeBeendigungArt: (e.target.value || null) as VorzeitigeBeendigungArt | null })
+                }
+              >
+                <option value="">(nicht gesetzt)</option>
+                {VORZEITIGE_BEENDIGUNG_ART_VALUES.map((v) => (
+                  <option key={v} value={v}>
+                    {VORZEITIGE_BEENDIGUNG_ART_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid-2">
+            <div className="field">
+              <label>Vorname (nur lokal)</label>
+              <input value={abForm.vorname} onChange={(e) => setAbForm({ ...abForm, vorname: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
+            </div>
+            <div className="field">
+              <label>Nachname (nur lokal)</label>
+              <input value={abForm.nachname} onChange={(e) => setAbForm({ ...abForm, nachname: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label>Kundennummer (nur lokal)</label>
+              <input value={abForm.kundennummer} onChange={(e) => setAbForm({ ...abForm, kundennummer: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
+            </div>
+            <div className="field">
+              <label>Träger/Einrichtung (nur lokal)</label>
+              <input value={abForm.traegerEinrichtung} onChange={(e) => setAbForm({ ...abForm, traegerEinrichtung: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label>Ansprechperson – Vorname (nur lokal)</label>
+              <input
+                value={abForm.ansprechpersonVorname}
+                onChange={(e) => setAbForm({ ...abForm, ansprechpersonVorname: e.target.value })}
+                onBlur={() => saveAbschlussErgebnis(abForm)}
+              />
+            </div>
+            <div className="field">
+              <label>Ansprechperson – Nachname (nur lokal)</label>
+              <input
+                value={abForm.ansprechpersonNachname}
+                onChange={(e) => setAbForm({ ...abForm, ansprechpersonNachname: e.target.value })}
+                onBlur={() => saveAbschlussErgebnis(abForm)}
+              />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label>Telefon (nur lokal)</label>
+              <input value={abForm.telefon} onChange={(e) => setAbForm({ ...abForm, telefon: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
+            </div>
+            <div className="field">
+              <label>E-Mail (nur lokal)</label>
+              <input value={abForm.email} onChange={(e) => setAbForm({ ...abForm, email: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
+            </div>
+          </div>
+
+          {record.baseData.massnahmeart === "bvb3" && (
+            <div className="field">
+              <label>Lernort Wohnen/Internat (BvB-3-Sonderfeld)</label>
+              <select
+                value={abForm.lernortWohnenInternat ?? ""}
+                onChange={(e) => saveAbschlussErgebnis({ ...abForm, lernortWohnenInternat: (e.target.value || null) as JaNein | null })}
+              >
+                <option value="">(nicht gesetzt)</option>
+                <option value="ja">{JA_NEIN_LABELS.ja}</option>
+                <option value="nein">{JA_NEIN_LABELS.nein}</option>
+              </select>
+            </div>
+          )}
+
+          <div className="field">
+            <label>Hauptschulabschluss erreicht</label>
+            <select
+              value={abForm.hauptschulabschlussErreicht ?? ""}
+              onChange={(e) =>
+                saveAbschlussErgebnis({ ...abForm, hauptschulabschlussErreicht: (e.target.value || null) as JaNeinNichtRelevant | null })
+              }
+            >
+              <option value="">(nicht gesetzt)</option>
+              {(["ja", "nein", "nicht_relevant"] as JaNeinNichtRelevant[]).map((v) => (
+                <option key={v} value={v}>
+                  {JA_NEIN_NICHT_RELEVANT_LABELS[v]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="notice info">
+            Ausbildungsreife, Berufseignung und Unterstützungsbedarf erfordern HUMAN_CONFIRMED: Claude darf diese
+            Entscheidungen nie selbst ableiten - erst die aktive Bestätigung hier hebt die Freigabeblockade auf.
+          </div>
+
+          <div className="field">
+            <label>Allgemeine Ausbildungsreife erreicht</label>
+            <div className="button-row">
+              <select
+                value={abForm.ausbildungsreifeErreicht.value ?? ""}
+                onChange={(e) =>
+                  setAbForm({
+                    ...abForm,
+                    ausbildungsreifeErreicht: { value: (e.target.value || null) as JaNein | null, humanConfirmed: false }
+                  })
+                }
+              >
+                <option value="">(nicht gesetzt)</option>
+                <option value="ja">{JA_NEIN_LABELS.ja}</option>
+                <option value="nein">{JA_NEIN_LABELS.nein}</option>
+              </select>
+              <button
+                type="button"
+                disabled={!abForm.ausbildungsreifeErreicht.value || abForm.ausbildungsreifeErreicht.humanConfirmed}
+                onClick={() =>
+                  saveAbschlussErgebnis({ ...abForm, ausbildungsreifeErreicht: { ...abForm.ausbildungsreifeErreicht, humanConfirmed: true } })
+                }
+              >
+                {abForm.ausbildungsreifeErreicht.humanConfirmed ? "✓ Bestätigt (HUMAN_CONFIRMED)" : "Aktiv bestätigen"}
+              </button>
+            </div>
+          </div>
+
+          <div className="field">
+            <label>Berufseignung (Berufe/Qualifikationsniveau)</label>
+            <div className="button-row" style={{ alignItems: "flex-start" }}>
+              <textarea
+                value={abForm.berufseignung.value}
+                onChange={(e) => setAbForm({ ...abForm, berufseignung: { value: e.target.value, humanConfirmed: false } })}
+              />
+              <button
+                type="button"
+                disabled={!abForm.berufseignung.value.trim() || abForm.berufseignung.humanConfirmed}
+                onClick={() => saveAbschlussErgebnis({ ...abForm, berufseignung: { ...abForm.berufseignung, humanConfirmed: true } })}
+              >
+                {abForm.berufseignung.humanConfirmed ? "✓ Bestätigt (HUMAN_CONFIRMED)" : "Aktiv bestätigen"}
+              </button>
+            </div>
+          </div>
+
+          <div className="field">
+            <label>Qualifizierungs-/Ausbildungsbausteine (optional)</label>
+            <textarea
+              value={abForm.qualifizierungsAusbildungsbausteine}
+              onChange={(e) => setAbForm({ ...abForm, qualifizierungsAusbildungsbausteine: e.target.value })}
+              onBlur={() => saveAbschlussErgebnis(abForm)}
+            />
+          </div>
+          <div className="field">
+            <label>Vermittlungsfähigkeit</label>
+            <textarea
+              value={abForm.vermittlungsfaehigkeit}
+              onChange={(e) => setAbForm({ ...abForm, vermittlungsfaehigkeit: e.target.value })}
+              onBlur={() => saveAbschlussErgebnis(abForm)}
+            />
+          </div>
+          <div className="field">
+            <label>Eingliederungsergebnis (inkl. Begründung, falls keine Eingliederung)</label>
+            <textarea
+              value={abForm.eingliederungsergebnis}
+              onChange={(e) => setAbForm({ ...abForm, eingliederungsergebnis: e.target.value })}
+              onBlur={() => saveAbschlussErgebnis(abForm)}
+            />
+          </div>
+
+          <div className="field">
+            <label>Unterstützungsbedarf</label>
+            <div className="button-row">
+              <select
+                value={abForm.unterstuetzungsbedarf.value ?? ""}
+                onChange={(e) =>
+                  setAbForm({
+                    ...abForm,
+                    unterstuetzungsbedarf: { value: (e.target.value || null) as JaNein | null, humanConfirmed: false }
+                  })
+                }
+              >
+                <option value="">(nicht gesetzt)</option>
+                <option value="ja">{JA_NEIN_LABELS.ja}</option>
+                <option value="nein">{JA_NEIN_LABELS.nein}</option>
+              </select>
+              <button
+                type="button"
+                disabled={!abForm.unterstuetzungsbedarf.value || abForm.unterstuetzungsbedarf.humanConfirmed}
+                onClick={() =>
+                  saveAbschlussErgebnis({ ...abForm, unterstuetzungsbedarf: { ...abForm.unterstuetzungsbedarf, humanConfirmed: true } })
+                }
+              >
+                {abForm.unterstuetzungsbedarf.humanConfirmed ? "✓ Bestätigt (HUMAN_CONFIRMED)" : "Aktiv bestätigen"}
+              </button>
+            </div>
+          </div>
+
+          {abForm.unterstuetzungsbedarf.value === "ja" && (
+            <div className="field">
+              <label>Beschreibung Unterstützungsbedarf und Empfehlung</label>
+              <textarea
+                value={abForm.unterstuetzungsbedarfBeschreibungEmpfehlung}
+                onChange={(e) => setAbForm({ ...abForm, unterstuetzungsbedarfBeschreibungEmpfehlung: e.target.value })}
+                onBlur={() => saveAbschlussErgebnis(abForm)}
+              />
+            </div>
+          )}
+
+          <div className="field">
+            <label>Absprachen zur Stabilisierung/Festigung (Kontaktformat, Häufigkeit)</label>
+            <textarea
+              value={abForm.stabilisierungFestigung}
+              onChange={(e) => setAbForm({ ...abForm, stabilisierungFestigung: e.target.value })}
+              onBlur={() => saveAbschlussErgebnis(abForm)}
+            />
+          </div>
+
+          {abError && <div className="notice error">{abError}</div>}
+          {abSaving && <p className="muted">Speichere…</p>}
+        </div>
+      )}
 
       <div className="section-block">
         <h3>Freigabecheck</h3>

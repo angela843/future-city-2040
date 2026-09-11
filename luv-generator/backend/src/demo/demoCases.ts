@@ -4,7 +4,7 @@
  * Beobachtungen sind frei erfunden und dienen ausschliesslich der Demonstration des
  * TESTSYSTEMS.
  */
-import { CaseRecord, SubCompetence, EvidenceItem, SupportGoal, ComparisonClaim, BAFoerderzielbereich } from "../domain/types.js";
+import { CaseRecord, SubCompetence, EvidenceItem, SupportGoal, ComparisonClaim, BAFoerderzielbereich, emptyAbschlussErgebnis } from "../domain/types.js";
 import { ensureSectionSkeleton } from "../luv_composer/composer.js";
 import { deriveSupportAreaCandidates } from "../domain/supportLogic.js";
 import { compareRatings } from "../domain/comparisonLogic.js";
@@ -101,10 +101,14 @@ export function buildDemoA(): DraftCase {
       teilnehmerName: "Alex Fiktiv",
       geburtsdatum: "2006-03-14",
       massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB) - Fachrichtung Handwerk/Technik",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-02-01",
       kompetenzanalyseEnde: "2026-02-28",
       massnahmeEndeGeplant: "2027-01-31",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-02-01",
       beurteilungszeitraumBis: "2026-04-30",
@@ -142,6 +146,7 @@ export function buildDemoA(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "aktiv" }],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
   };
@@ -173,10 +178,14 @@ export function buildDemoB(): DraftCase {
       teilnehmerName: "Sam Wenigdaten",
       geburtsdatum: "2006-09-01",
       massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB)",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-03-02",
       kompetenzanalyseEnde: null,
       massnahmeEndeGeplant: "2027-03-01",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-03-02",
       beurteilungszeitraumBis: "2026-03-16",
@@ -203,6 +212,7 @@ export function buildDemoB(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
   };
@@ -235,10 +245,14 @@ export function buildDemoC(): DraftCase {
       teilnehmerName: "Jamie Pauschal",
       geburtsdatum: "2006-01-11",
       massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB)",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-01-12",
       kompetenzanalyseEnde: "2026-02-09",
       massnahmeEndeGeplant: "2026-12-11",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-01-12",
       beurteilungszeitraumBis: "2026-03-12",
@@ -265,6 +279,7 @@ export function buildDemoC(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
   };
@@ -333,10 +348,14 @@ export function buildDemoD(): DraftCase {
       teilnehmerName: "Robin Beispiel",
       geburtsdatum: "2005-11-02",
       massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB) - Fachrichtung Wirtschaft/Verwaltung",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2025-09-01",
       kompetenzanalyseEnde: "2025-10-03",
       massnahmeEndeGeplant: "2026-08-31",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "verlauf",
       beurteilungszeitraumVon: "2026-01-01",
       beurteilungszeitraumBis: "2026-03-31",
@@ -388,6 +407,7 @@ export function buildDemoD(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "aktiv" }],
     teilnehmerbesprechung: { besprochen: true, datum: "2026-04-02", mehrfertigungAusgehaendigt: true, besprechungNichtMoeglich: false, hinweisGrund: "" },
+    abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
   };
@@ -446,10 +466,14 @@ export function buildDemoE(): DraftCase {
       teilnehmerName: "Kim Mustermann",
       geburtsdatum: "2005-06-20",
       massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB) - Fachrichtung Lager/Logistik",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2025-08-01",
       kompetenzanalyseEnde: "2025-09-02",
       massnahmeEndeGeplant: "2026-07-31",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "abschluss",
       beurteilungszeitraumVon: "2026-05-01",
       beurteilungszeitraumBis: "2026-07-31",
@@ -502,6 +526,7 @@ export function buildDemoE(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "abgeschlossen" }],
     teilnehmerbesprechung: { besprochen: true, datum: "2026-07-28", mehrfertigungAusgehaendigt: true, besprechungNichtMoeglich: false, hinweisGrund: "" },
+    abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
   };
@@ -586,10 +611,14 @@ export function buildDemoF(): DraftCase {
       teilnehmerName: "Toni Mehrbereich",
       geburtsdatum: "2006-05-19",
       massnahme: "Berufsvorbereitende Bildungsmaßnahme (BvB) - Fachrichtung Handwerk/Technik",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-02-02",
       kompetenzanalyseEnde: "2026-03-06",
       massnahmeEndeGeplant: "2027-02-01",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-02-02",
       beurteilungszeitraumBis: "2026-04-30",
@@ -625,6 +654,7 @@ export function buildDemoF(): DraftCase {
       { bereich: "berufsorientierung_berufswahl", status: "begonnen" }
     ],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
   };
@@ -677,10 +707,14 @@ export function buildDemoG(): DraftCase {
       teilnehmerName: "Sascha Reha",
       geburtsdatum: "2005-12-08",
       massnahme: "Berufsvorbereitende Bildungsmaßnahme Reha (BvB-Reha) - Fachrichtung Wirtschaft/Verwaltung",
-      massnahmeart: "bvb_reha",
+      massnahmeart: "bvb2",
       eintrittsdatum: "2026-01-05",
       kompetenzanalyseEnde: "2026-02-16",
       massnahmeEndeGeplant: "2027-06-30",
+      verlaufAnlass: null,
+      verlaengerungstermin: null,
+      massnahmeziel: "berufsausbildung",
+      begruendungKeineAusbildung: "",
       luvArt: "start",
       beurteilungszeitraumVon: "2026-01-05",
       beurteilungszeitraumBis: "2026-04-05",
@@ -703,6 +737,7 @@ export function buildDemoG(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
   };

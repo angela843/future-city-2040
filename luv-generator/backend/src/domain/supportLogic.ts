@@ -9,7 +9,7 @@
  * Erst eine aktive Bestaetigung durch die Koordination (confirmed_support_need = true,
  * hier abgebildet als SupportAreaStatus "confirmed") erlaubt Zielvorschlaege.
  */
-import { RATING_INTERNAL_SCORE, SubCompetence, SupportAreaCandidate } from "./types.js";
+import { Massnahmeart, RATING_INTERNAL_SCORE, ROLLE_VALUES, Rolle, SubCompetence, SupportAreaCandidate } from "./types.js";
 
 export type TriggerLevel = "development" | "support" | "priority";
 
@@ -78,4 +78,17 @@ export function checkGoalCountWarning(confirmedGoalCount: number): { warn: boole
     warn: true,
     message: `Es wurden ${confirmedGoalCount} Förderziele ausgewählt. Prüfen Sie, welche Ziele für den aktuellen Beurteilungszeitraum tatsächlich zentral sind.`
   };
+}
+
+/**
+ * Rollenbezogene Zielvereinbarung (Migrationsplan 0.1->0.2, Entscheidung 8).
+ * "Paedagogische Mitarbeitende Lernort Wohnen" ist massnahmeabhaengig und wird nur
+ * bei BvB 3 angezeigt - dokumentierte Annahme, da PH-17 die genaue Zuordnung der
+ * uebrigen Rollen zu einzelnen Massnahmearten nicht spezifiziert. Alle anderen
+ * Rollen sind fuer alle drei Massnahmearten waehlbar.
+ * TODO: fachlich abgleichen, falls weitere Rollen tatsaechlich massnahmeabhaengig sind.
+ */
+export function rollenForMassnahmeart(massnahmeart: Massnahmeart): Rolle[] {
+  if (massnahmeart === "bvb3") return [...ROLLE_VALUES];
+  return ROLLE_VALUES.filter((r) => r !== "paedagogische_mitarbeitende_lernort_wohnen");
 }

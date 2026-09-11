@@ -76,5 +76,12 @@ export const DIRECT_IDENTIFIER_KEYS = [
   "participantid",
   "kundennummer",
   "personalausweis",
-  "sozialversicherungsnummer"
+  "sozialversicherungsnummer",
+  // Abschluss-Modul (Migrationsplan 0.1->0.2 Abschnitt 3.4, Felder 4-6/8-12):
+  // dieselbe Regel gilt fuer die Ansprechperson und die Traeger-/Einrichtungsangabe.
+  "ansprechpersonvorname",
+  "ansprechpersonnachname",
+  "traegereinrichtung",
+  "traeger",
+  "einrichtung"
 ];

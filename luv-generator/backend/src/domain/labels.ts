@@ -1,4 +1,19 @@
-import { BAFoerderzielbereich, BeruflicheVorerfahrung, CompetenceArea, LuvSection, Orientierungsstatus, Schulabschluss } from "./types.js";
+import {
+  BAFoerderzielbereich,
+  BeruflicheVorerfahrung,
+  CompetenceArea,
+  JaNein,
+  JaNeinNichtRelevant,
+  LuvSection,
+  Massnahmeart,
+  Massnahmeziel,
+  Orientierungsstatus,
+  Rolle,
+  Schulabschluss,
+  Uebermittlungsanlass,
+  VerlaufAnlass,
+  VorzeitigeBeendigungArt
+} from "./types.js";
 
 export const AREA_LABELS: Record<CompetenceArea, string> = {
   schulische_grundkompetenzen: "Schulische Grundkompetenzen",
@@ -27,10 +42,53 @@ export const BA_FOERDERZIELBEREICH_LABELS: Record<BAFoerderzielbereich, string> 
   erwerb_hauptschulabschluss: "Erwerb Hauptschulabschluss"
 };
 
-export const MASSNAHMEART_LABELS = {
-  bvb: "BvB",
-  bvb_reha: "BvB-Reha"
-} as const;
+export const MASSNAHMEART_LABELS: Record<Massnahmeart, string> = {
+  bvb1: "BvB 1",
+  bvb2: "BvB-Reha (BvB 2)",
+  bvb3: "BvB-Reha (BvB 3)"
+};
+
+export const VERLAUF_ANLASS_LABELS: Record<VerlaufAnlass, string> = {
+  regulaer: "Regulär",
+  vor_massnahmeende: "Vor Maßnahmeende",
+  verlaengerung: "Verlängerung",
+  sonstiger_anlass: "Sonstiger Anlass"
+};
+
+export const MASSNAHMEZIEL_LABELS: Record<Massnahmeziel, string> = {
+  berufsausbildung: "Berufsausbildung",
+  sv_beschaeftigung: "Sozialversicherungspflichtige Beschäftigung"
+};
+
+/** Migrationsplan 0.1->0.2, Entscheidung 8 (verbindliche Rollenliste des Nutzers). */
+export const ROLLE_LABELS: Record<Rolle, string> = {
+  teilnehmende_person: "Teilnehmende Person",
+  bildungsbegleitung_case_management: "Bildungsbegleitung / Case Management",
+  ausbilder: "Ausbilder/in",
+  lehrkraft: "Lehrkraft",
+  sozialpaedagogik: "Sozialpädagogik",
+  psychologe_psychologin: "Psychologe/Psychologin",
+  weiteres_fachpersonal: "Weiteres Fachpersonal",
+  paedagogische_mitarbeitende_lernort_wohnen: "Pädagogische Mitarbeitende Lernort Wohnen",
+  gemeinsame_aufgaben: "Gemeinsame Aufgaben"
+};
+
+export const UEBERMITTLUNGSANLASS_LABELS: Record<Uebermittlungsanlass, string> = {
+  regulaeres_ende: "Reguläres Ende",
+  vorzeitige_beendigung: "Vorzeitige Beendigung"
+};
+
+export const VORZEITIGE_BEENDIGUNG_ART_LABELS: Record<VorzeitigeBeendigungArt, string> = {
+  uebergang_ausbildung_arbeit: "Übergang in Ausbildung/Arbeit",
+  abbruch: "Abbruch"
+};
+
+export const JA_NEIN_LABELS: Record<JaNein, string> = { ja: "Ja", nein: "Nein" };
+export const JA_NEIN_NICHT_RELEVANT_LABELS: Record<JaNeinNichtRelevant, string> = {
+  ja: "Ja",
+  nein: "Nein",
+  nicht_relevant: "Nicht relevant"
+};
 
 export const SCHULABSCHLUSS_LABELS: Record<Schulabschluss, string> = {
   kein_schulabschluss: "kein Schulabschluss",

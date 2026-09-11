@@ -23,7 +23,7 @@ async function createBaseCase(luvArt: "start" | "verlauf" | "abschluss" = "start
       teilnehmerName: "Test Person (fiktiv)",
       geburtsdatum: "2005-01-01",
       massnahme: "Testmaßnahme",
-      massnahmeart: "bvb",
+      massnahmeart: "bvb1",
       eintrittsdatum: "2026-01-01",
       luvArt,
       beurteilungszeitraumVon: "2026-01-01",
