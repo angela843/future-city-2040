@@ -88,19 +88,47 @@ export interface HumanConfirmed<T> {
  * Abschnitt 3.4). Felder 4-6/8-12 sind direkte Identifikatoren - rein lokal, nie
  * Teil eines Claude-Payloads. Felder 14/15/19 sind HUMAN_CONFIRMED-pflichtig.
  */
-export interface AbschlussErgebnis {
-  abschlussLuvVom: string | null;
-  uebermittlungsanlass: Uebermittlungsanlass | null;
-  vorzeitigeBeendigungArt: VorzeitigeBeendigungArt | null;
+/**
+ * Gemeinsamer Stammdatenkern fuer START/VERLAUF/ABSCHLUSS (Korrekturauftrag V0.2.1,
+ * A4). Direkte Identifikatoren - rein lokal, nie Teil eines Claude-Payloads.
+ */
+export interface Stammdaten {
+  luvDatum: string | null;
   vorname: string;
   nachname: string;
   kundennummer: string;
-  lernortWohnenInternat: JaNein | null;
   traegerEinrichtung: string;
   ansprechpersonVorname: string;
   ansprechpersonNachname: string;
   telefon: string;
   email: string;
+  /** Nur bei massnahmeart="bvb3" erfasst/angezeigt/exportiert. */
+  lernortWohnenInternat: JaNein | null;
+}
+
+export function emptyStammdaten(): Stammdaten {
+  return {
+    luvDatum: null,
+    vorname: "",
+    nachname: "",
+    kundennummer: "",
+    traegerEinrichtung: "",
+    ansprechpersonVorname: "",
+    ansprechpersonNachname: "",
+    telefon: "",
+    email: "",
+    lernortWohnenInternat: null
+  };
+}
+
+/**
+ * Abschluss-spezifische Ergebnisfelder. Die direkten Identifikatoren und das
+ * LuV-Datum sind seit Korrekturauftrag V0.2.1 (A4) Teil des gemeinsamen
+ * `Stammdaten`-Kerns und hier NICHT mehr dupliziert.
+ */
+export interface AbschlussErgebnis {
+  uebermittlungsanlass: Uebermittlungsanlass | null;
+  vorzeitigeBeendigungArt: VorzeitigeBeendigungArt | null;
   hauptschulabschlussErreicht: JaNeinNichtRelevant | null;
   ausbildungsreifeErreicht: HumanConfirmed<JaNein | null>;
   berufseignung: HumanConfirmed<string>;
@@ -114,18 +142,8 @@ export interface AbschlussErgebnis {
 
 export function emptyAbschlussErgebnis(): AbschlussErgebnis {
   return {
-    abschlussLuvVom: null,
     uebermittlungsanlass: null,
     vorzeitigeBeendigungArt: null,
-    vorname: "",
-    nachname: "",
-    kundennummer: "",
-    lernortWohnenInternat: null,
-    traegerEinrichtung: "",
-    ansprechpersonVorname: "",
-    ansprechpersonNachname: "",
-    telefon: "",
-    email: "",
     hauptschulabschlussErreicht: null,
     ausbildungsreifeErreicht: { value: null, humanConfirmed: false },
     berufseignung: { value: "", humanConfirmed: false },
@@ -164,6 +182,9 @@ export const FOERDERZIELBEREICH_STATUS_LABELS: Record<FoerderzielbereichStatus, 
 export interface FoerderzielbereichTracking {
   bereich: BAFoerderzielbereich;
   status: FoerderzielbereichStatus;
+  /** Voraussichtlicher Zeitraum der Förder-/Qualifizierungsplanung (Korrekturauftrag V0.2.1, A5). */
+  von: string | null;
+  bis: string | null;
 }
 
 export const SCHULABSCHLUSS_OPTIONS = [
@@ -386,6 +407,8 @@ export interface BaseData {
   eintrittsdatum: string;
   kompetenzanalyseEnde: string | null;
   massnahmeEndeGeplant: string | null;
+  /** Tatsächlicher letzter Teilnahmetag/Austrittsdatum (Korrekturauftrag V0.2.1, A2) - einzige Grundlage der Abschluss-LUV-Frist. */
+  tatsaechlicherLetzterTeilnahmetag: string | null;
   verlaufAnlass: VerlaufAnlass | null;
   verlaengerungstermin: string | null;
   massnahmeziel: Massnahmeziel | null;
@@ -417,6 +440,7 @@ export interface FristenResult {
   weitereVerlaufsLuvFaellig: string | null;
   verlaengerungsVerlaufsLuvFaellig: string | null;
   abschlussLuvFaellig: string | null;
+  abschlussLuvFaelligHinweis: string | null;
 }
 
 export interface KompetenzanalyseDauerHinweis {
@@ -573,6 +597,7 @@ export interface CaseRecord {
   sections: LuvSection[];
   foerderzielbereichTracking: FoerderzielbereichTracking[];
   teilnehmerbesprechung: Teilnehmerbesprechung;
+  stammdaten: Stammdaten;
   abschlussErgebnis: AbschlussErgebnis;
   approvedForExport: boolean;
   approvalTimestamp: string | null;

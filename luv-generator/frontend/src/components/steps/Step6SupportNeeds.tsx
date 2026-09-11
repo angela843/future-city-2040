@@ -101,6 +101,13 @@ export function Step6SupportNeeds({
     onUpdated(updated);
   }
 
+  async function setTrackingZeitraum(bereich: BAFoerderzielbereich, status: FoerderzielbereichStatus, von: string | null, bis: string | null) {
+    const updated = await api
+      .put(`/api/cases/${record.id}/foerderzielbereich-tracking`, { bereich, status, von, bis })
+      .then(() => api.get<CaseRecord>(`/api/cases/${record.id}`));
+    onUpdated(updated);
+  }
+
   const confirmedAreas = record.supportAreaCandidates.filter((a) => a.status === "confirmed");
   const confirmedGoalCount = record.supportGoals.filter((g) =>
     ["uebernommen", "bearbeitet", "neu_formuliert"].includes(g.status)
@@ -321,6 +328,28 @@ export function Step6SupportNeeds({
                     {FOERDERZIELBEREICH_STATUS_LABELS[s]}
                   </button>
                 ))}
+              </div>
+              <div className="grid-2">
+                <div className="field">
+                  <label>Voraussichtlich von</label>
+                  <input
+                    type="date"
+                    value={tracking?.von ?? ""}
+                    onChange={(e) =>
+                      setTrackingZeitraum(b, tracking?.status ?? "begonnen", e.target.value || null, tracking?.bis ?? null)
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>Voraussichtlich bis</label>
+                  <input
+                    type="date"
+                    value={tracking?.bis ?? ""}
+                    onChange={(e) =>
+                      setTrackingZeitraum(b, tracking?.status ?? "begonnen", tracking?.von ?? null, e.target.value || null)
+                    }
+                  />
+                </div>
               </div>
             </div>
           );

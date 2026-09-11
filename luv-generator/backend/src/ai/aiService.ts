@@ -21,15 +21,23 @@ export async function runAiTask(
   task: AiTaskType,
   caseId: string,
   rawPayload: Record<string, unknown>,
-  availableEvidenceIds: string[]
+  availableEvidenceIds: string[],
+  knownIdentifierValues: string[] = []
 ): Promise<AiServiceResult> {
-  const gatewayResult = runPrivacyGateway(task, caseId, rawPayload);
+  const gatewayResult = runPrivacyGateway(task, caseId, rawPayload, knownIdentifierValues);
   if (!gatewayResult.ok || !gatewayResult.sanitizedPayload) {
     if (gatewayResult.blockedReason === "sensitive_data_check_required") {
       return {
         kind: "blocked_privacy",
         reason: "Datenschutzprüfung erforderlich",
         matchedTerms: gatewayResult.matchedSensitiveTerms
+      };
+    }
+    if (gatewayResult.blockedReason === "unresolved_identifier_in_freetext") {
+      return {
+        kind: "blocked_privacy",
+        reason:
+          "Der Text enthält ein Muster, das nicht sicher datensparsam übertragen werden kann (z. B. eine E-Mail-Adresse), und wurde deshalb nicht an Claude gesendet."
       };
     }
     return { kind: "blocked_privacy", reason: "Keine ausreichenden Daten für eine KI-Anfrage." };

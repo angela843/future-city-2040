@@ -62,22 +62,53 @@ export function checkGeneralPreValidation(c: CaseRecord): PreValidationBlock {
 }
 
 /**
- * Abschluss-Modul (Migrationsplan 0.1->0.2, Entscheidung 9): Ausbildungsreife (14),
- * Berufseignung (15) und Unterstützungsbedarf (19) sind HUMAN_CONFIRMED-pflichtig.
- * Ohne aktive Bestaetigung durch die Koordination darf ein Abschluss-Fall nicht
- * freigegeben werden - Claude darf diese Entscheidungen nie selbst ableiten.
+ * Abschluss-Modul (Migrationsplan 0.1->0.2, Entscheidung 9; gehaertet durch
+ * Korrekturauftrag V0.2.1, A3): Ausbildungsreife (14), Berufseignung (15) und
+ * Unterstützungsbedarf (19) sind HUMAN_CONFIRMED-pflichtig. Ohne aktive Bestaetigung
+ * durch die Koordination darf ein Abschluss-Fall nicht freigegeben werden - Claude darf
+ * diese Entscheidungen nie selbst ableiten.
+ *
+ * A3 haertet dies: HUMAN_CONFIRMED gilt nur als gueltig, wenn `humanConfirmed=true`
+ * UND ein fachlich zulaessiger, nicht-null/nicht-leerer Wert vorhanden ist. Ein
+ * formal auf `humanConfirmed=true` gesetztes Feld mit `value=null` bzw. leerem
+ * Freitext blockiert die Freigabe weiterhin.
  */
 export function checkAbschlussHumanConfirmed(c: CaseRecord): PreValidationBlock {
   if (c.baseData.luvArt !== "abschluss") return { blocked: false };
+  const a = c.abschlussErgebnis;
   const missing: string[] = [];
-  if (!c.abschlussErgebnis.ausbildungsreifeErreicht.humanConfirmed) missing.push("Allgemeine Ausbildungsreife erreicht");
-  if (!c.abschlussErgebnis.berufseignung.humanConfirmed) missing.push("Berufseignung");
-  if (!c.abschlussErgebnis.unterstuetzungsbedarf.humanConfirmed) missing.push("Unterstützungsbedarf");
+  if (!a.ausbildungsreifeErreicht.humanConfirmed || a.ausbildungsreifeErreicht.value === null) {
+    missing.push("Allgemeine Ausbildungsreife erreicht");
+  }
+  if (!a.berufseignung.humanConfirmed || !a.berufseignung.value.trim()) {
+    missing.push("Berufseignung");
+  }
+  if (!a.unterstuetzungsbedarf.humanConfirmed || a.unterstuetzungsbedarf.value === null) {
+    missing.push("Unterstützungsbedarf");
+  }
   if (missing.length === 0) return { blocked: false };
   return {
     blocked: true,
-    reason: `Folgende Entscheidungen im Abschluss-Modul sind noch nicht durch die Koordination bestätigt (HUMAN_CONFIRMED): ${missing.join(
+    reason: `Folgende Entscheidungen im Abschluss-Modul sind noch nicht gültig bestätigt (HUMAN_CONFIRMED erfordert eine aktive Bestätigung UND einen ausgefüllten Wert): ${missing.join(
       ", "
-    )}. Claude darf diese Entscheidungen nicht selbst ableiten - die Freigabe ist erst nach aktiver Bestätigung möglich.`
+    )}. Claude darf diese Entscheidungen nicht selbst ableiten - die Freigabe ist erst nach aktiver, vollständiger Bestätigung möglich.`
   };
+}
+
+/**
+ * Korrekturauftrag V0.2.1, A3: ist Unterstützungsbedarf = Ja, muss die Beschreibung
+ * des Unterstützungsbedarfs einschließlich Empfehlung (Feld 20) vor der Finalfreigabe
+ * ausgefüllt sein. Bei Unterstützungsbedarf = Nein wird sie NICHT künstlich erzwungen.
+ */
+export function checkUnterstuetzungsbedarfBeschreibung(c: CaseRecord): PreValidationBlock {
+  if (c.baseData.luvArt !== "abschluss") return { blocked: false };
+  const a = c.abschlussErgebnis;
+  if (a.unterstuetzungsbedarf.value === "ja" && !a.unterstuetzungsbedarfBeschreibungEmpfehlung.trim()) {
+    return {
+      blocked: true,
+      reason:
+        'Bei Unterstützungsbedarf "Ja" fehlt die Beschreibung des Unterstützungsbedarfs einschließlich Empfehlung (Feld 20) - dieses Feld ist in diesem Fall Pflicht vor der Freigabe.'
+    };
+  }
+  return { blocked: false };
 }

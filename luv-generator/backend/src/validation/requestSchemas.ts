@@ -36,6 +36,7 @@ export const BaseDataSchema = z
     eintrittsdatum: z.string().max(20),
     kompetenzanalyseEnde: z.string().max(20).nullable().optional(),
     massnahmeEndeGeplant: z.string().max(20).nullable().optional(),
+    tatsaechlicherLetzterTeilnahmetag: z.string().max(20).nullable().optional(),
     verlaufAnlass: VerlaufAnlassSchema.nullable().optional(),
     verlaengerungstermin: z.string().max(20).nullable().optional(),
     massnahmeziel: MassnahmezielSchema.nullable().optional(),
@@ -129,7 +130,9 @@ export const TeilnehmerbesprechungSchema = z.object({
 
 export const FoerderzielbereichTrackingUpdateSchema = z.object({
   bereich: BAFoerderzielbereichSchema,
-  status: z.enum(["begonnen", "aktiv", "abgeschlossen", "erneut_geoeffnet"])
+  status: z.enum(["begonnen", "aktiv", "abgeschlossen", "erneut_geoeffnet"]),
+  von: z.string().max(20).nullable().optional(),
+  bis: z.string().max(20).nullable().optional()
 });
 
 export const FurtherFindingsSchema = z.object({
@@ -162,19 +165,23 @@ function humanConfirmedSchema<T extends z.ZodTypeAny>(valueSchema: T) {
   return z.object({ value: valueSchema, humanConfirmed: z.boolean() });
 }
 
-export const AbschlussErgebnisSchema = z.object({
-  abschlussLuvVom: z.string().max(20).nullable(),
-  uebermittlungsanlass: UebermittlungsanlassSchema.nullable(),
-  vorzeitigeBeendigungArt: VorzeitigeBeendigungArtSchema.nullable(),
+/** Korrekturauftrag V0.2.1, A4: gemeinsamer Stammdatenkern fuer START/VERLAUF/ABSCHLUSS. */
+export const StammdatenSchema = z.object({
+  luvDatum: z.string().max(20).nullable(),
   vorname: z.string().max(200),
   nachname: z.string().max(200),
   kundennummer: z.string().max(100),
-  lernortWohnenInternat: JaNeinSchema.nullable(),
   traegerEinrichtung: z.string().max(300),
   ansprechpersonVorname: z.string().max(200),
   ansprechpersonNachname: z.string().max(200),
   telefon: z.string().max(100),
   email: z.string().max(200),
+  lernortWohnenInternat: JaNeinSchema.nullable()
+});
+
+export const AbschlussErgebnisSchema = z.object({
+  uebermittlungsanlass: UebermittlungsanlassSchema.nullable(),
+  vorzeitigeBeendigungArt: VorzeitigeBeendigungArtSchema.nullable(),
   hauptschulabschlussErreicht: JaNeinNichtRelevantSchema.nullable(),
   ausbildungsreifeErreicht: humanConfirmedSchema(JaNeinSchema.nullable()),
   berufseignung: humanConfirmedSchema(z.string().max(2000)),

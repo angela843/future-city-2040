@@ -4,6 +4,8 @@ import {
   BaseData,
   CaseRecord,
   FristenResult,
+  JA_NEIN_LABELS,
+  JaNein,
   KompetenzanalyseDauerHinweis,
   LuvArt,
   MASSNAHMEART_LABELS,
@@ -12,6 +14,7 @@ import {
   MASSNAHMEZIEL_VALUES,
   Massnahmeart,
   Massnahmeziel,
+  Stammdaten,
   VERLAUF_ANLASS_LABELS,
   VERLAUF_ANLASS_VALUES,
   VerlaufAnlass
@@ -41,6 +44,7 @@ const EMPTY: FormState = {
   eintrittsdatum: "",
   kompetenzanalyseEnde: "",
   massnahmeEndeGeplant: "",
+  tatsaechlicherLetzterTeilnahmetag: "",
   verlaufAnlass: "",
   verlaengerungstermin: "",
   massnahmeziel: "",
@@ -75,9 +79,26 @@ export function Step1BaseData({
   const [error, setError] = useState<string | null>(null);
   const [fristen, setFristen] = useState<FristenResult | null>(null);
   const [dauerHinweis, setDauerHinweis] = useState<KompetenzanalyseDauerHinweis | null>(null);
+  const [stammForm, setStammForm] = useState<Stammdaten | null>(record?.stammdaten ?? null);
+  const [stammSaving, setStammSaving] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function saveStammdaten(next: Stammdaten) {
+    if (!record) return;
+    setStammForm(next);
+    setStammSaving(true);
+    try {
+      const res = await api.put<{ stammdaten: Stammdaten }>(`/api/cases/${record.id}/stammdaten`, next);
+      setStammForm(res.stammdaten);
+      onUpdated({ ...record, stammdaten: res.stammdaten });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Stammdaten konnten nicht gespeichert werden.");
+    } finally {
+      setStammSaving(false);
+    }
   }
 
   useEffect(() => {
@@ -353,11 +374,26 @@ export function Step1BaseData({
             onChange={(e) => set("massnahmeEndeGeplant", e.target.value || null)}
           />
           <p className="muted">
-            Grundlage für die Fristen der weiteren Verlaufs-LUV (6 Wochen vorher) und der Abschluss-LUV.
-            TODO: fachlich abgleichen – bei abweichendem tatsächlichen Austritt gilt der tatsächliche letzte
-            Teilnahmetag.
+            Reiner Planungswert, Grundlage für die Frist der weiteren Verlaufs-LUV (6 Wochen vorher). Wird NICHT für
+            die Abschluss-LUV-Frist verwendet - dafür siehe unten.
           </p>
         </div>
+
+        {form.luvArt === "abschluss" && (
+          <div className="field">
+            <label htmlFor="tatsaechlicherLetzterTeilnahmetag">Tatsächlicher letzter Teilnahmetag / Austrittsdatum</label>
+            <input
+              id="tatsaechlicherLetzterTeilnahmetag"
+              type="date"
+              value={form.tatsaechlicherLetzterTeilnahmetag ?? ""}
+              onChange={(e) => set("tatsaechlicherLetzterTeilnahmetag", e.target.value || null)}
+            />
+            <p className="muted">
+              Einzige Grundlage der Abschluss-LUV-Frist - sowohl bei regulärem Abschluss als auch bei vorzeitiger
+              Beendigung. Ohne dieses Datum wird keine Abschlussfrist als verbindlich ausgegeben.
+            </p>
+          </div>
+        )}
 
         {fristen && (
           <div className="card" style={{ background: "var(--card-bg-muted, #f4f4f4)" }}>
@@ -367,9 +403,10 @@ export function Step1BaseData({
               <li>Erste Verlaufs-LUV fällig: {fristen.ersteVerlaufsLuvFaellig ?? "–"}</li>
               <li>Weitere Verlaufs-LUV fällig: {fristen.weitereVerlaufsLuvFaellig ?? "– (geplantes Maßnahmeende fehlt)"}</li>
               <li>Verlängerungs-Verlaufs-LUV fällig: {fristen.verlaengerungsVerlaufsLuvFaellig ?? "– (Verlängerungstermin fehlt)"}</li>
-              <li>Abschluss-LUV fällig: {fristen.abschlussLuvFaellig ?? "– (geplantes Maßnahmeende fehlt)"}</li>
+              <li>Abschluss-LUV fällig: {fristen.abschlussLuvFaellig ?? "– (tatsächlicher letzter Teilnahmetag fehlt)"}</li>
             </ul>
             {dauerHinweis && !dauerHinweis.ok && <div className="notice warn">{dauerHinweis.hinweis}</div>}
+            {fristen.abschlussLuvFaelligHinweis && <div className="notice warn">{fristen.abschlussLuvFaelligHinweis}</div>}
           </div>
         )}
 
@@ -381,6 +418,124 @@ export function Step1BaseData({
           </button>
         </div>
       </form>
+
+      {record && stammForm && (
+        <div className="card">
+          <h2>Stammdaten</h2>
+          <p className="muted">
+            Gemeinsamer Stammdatenkern für Start-, Verlaufs- und Abschluss-LUV. Direkte Identifikatoren verbleiben
+            ausschließlich lokal und werden niemals an die KI übermittelt.
+          </p>
+
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="luvDatum">LuV-Datum</label>
+              <input
+                id="luvDatum"
+                type="date"
+                value={stammForm.luvDatum ?? ""}
+                onChange={(e) => setStammForm({ ...stammForm, luvDatum: e.target.value || null })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="kundennummer">Kundennummer (nur lokal)</label>
+              <input
+                id="kundennummer"
+                value={stammForm.kundennummer}
+                onChange={(e) => setStammForm({ ...stammForm, kundennummer: e.target.value })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="stammVorname">Vorname (nur lokal)</label>
+              <input
+                id="stammVorname"
+                value={stammForm.vorname}
+                onChange={(e) => setStammForm({ ...stammForm, vorname: e.target.value })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="stammNachname">Nachname (nur lokal)</label>
+              <input
+                id="stammNachname"
+                value={stammForm.nachname}
+                onChange={(e) => setStammForm({ ...stammForm, nachname: e.target.value })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="traegerEinrichtung">Träger/Einrichtung (nur lokal)</label>
+            <input
+              id="traegerEinrichtung"
+              value={stammForm.traegerEinrichtung}
+              onChange={(e) => setStammForm({ ...stammForm, traegerEinrichtung: e.target.value })}
+              onBlur={() => saveStammdaten(stammForm)}
+            />
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="ansprechpersonVorname">Ansprechperson – Vorname (nur lokal)</label>
+              <input
+                id="ansprechpersonVorname"
+                value={stammForm.ansprechpersonVorname}
+                onChange={(e) => setStammForm({ ...stammForm, ansprechpersonVorname: e.target.value })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="ansprechpersonNachname">Ansprechperson – Nachname (nur lokal)</label>
+              <input
+                id="ansprechpersonNachname"
+                value={stammForm.ansprechpersonNachname}
+                onChange={(e) => setStammForm({ ...stammForm, ansprechpersonNachname: e.target.value })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="stammTelefon">Telefon (nur lokal)</label>
+              <input
+                id="stammTelefon"
+                value={stammForm.telefon}
+                onChange={(e) => setStammForm({ ...stammForm, telefon: e.target.value })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="stammEmail">E-Mail (nur lokal)</label>
+              <input
+                id="stammEmail"
+                value={stammForm.email}
+                onChange={(e) => setStammForm({ ...stammForm, email: e.target.value })}
+                onBlur={() => saveStammdaten(stammForm)}
+              />
+            </div>
+          </div>
+
+          {form.massnahmeart === "bvb3" && (
+            <div className="field">
+              <label htmlFor="lernortWohnenInternat">Lernort Wohnen/Internat (BvB-3-Sonderfeld)</label>
+              <select
+                id="lernortWohnenInternat"
+                value={stammForm.lernortWohnenInternat ?? ""}
+                onChange={(e) => saveStammdaten({ ...stammForm, lernortWohnenInternat: (e.target.value || null) as JaNein | null })}
+              >
+                <option value="">(nicht gesetzt)</option>
+                <option value="ja">{JA_NEIN_LABELS.ja}</option>
+                <option value="nein">{JA_NEIN_LABELS.nein}</option>
+              </select>
+            </div>
+          )}
+
+          {stammSaving && <p className="muted">Speichere…</p>}
+        </div>
+      )}
     </div>
   );
 }

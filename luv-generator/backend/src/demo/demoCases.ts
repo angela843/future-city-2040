@@ -4,7 +4,7 @@
  * Beobachtungen sind frei erfunden und dienen ausschliesslich der Demonstration des
  * TESTSYSTEMS.
  */
-import { CaseRecord, SubCompetence, EvidenceItem, SupportGoal, ComparisonClaim, BAFoerderzielbereich, emptyAbschlussErgebnis } from "../domain/types.js";
+import { CaseRecord, SubCompetence, EvidenceItem, SupportGoal, ComparisonClaim, BAFoerderzielbereich, emptyAbschlussErgebnis, emptyStammdaten } from "../domain/types.js";
 import { ensureSectionSkeleton } from "../luv_composer/composer.js";
 import { deriveSupportAreaCandidates } from "../domain/supportLogic.js";
 import { compareRatings } from "../domain/comparisonLogic.js";
@@ -105,6 +105,7 @@ export function buildDemoA(): DraftCase {
       eintrittsdatum: "2026-02-01",
       kompetenzanalyseEnde: "2026-02-28",
       massnahmeEndeGeplant: "2027-01-31",
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -144,8 +145,9 @@ export function buildDemoA(): DraftCase {
     previousLuv: null,
     comparisonClaims: [],
     sections: [],
-    foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "aktiv" }],
+    foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "aktiv", von: null, bis: null }],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    stammdaten: emptyStammdaten(),
     abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
@@ -182,6 +184,7 @@ export function buildDemoB(): DraftCase {
       eintrittsdatum: "2026-03-02",
       kompetenzanalyseEnde: null,
       massnahmeEndeGeplant: "2027-03-01",
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -212,6 +215,7 @@ export function buildDemoB(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    stammdaten: emptyStammdaten(),
     abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
@@ -249,6 +253,7 @@ export function buildDemoC(): DraftCase {
       eintrittsdatum: "2026-01-12",
       kompetenzanalyseEnde: "2026-02-09",
       massnahmeEndeGeplant: "2026-12-11",
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -279,6 +284,7 @@ export function buildDemoC(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    stammdaten: emptyStammdaten(),
     abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
@@ -352,6 +358,7 @@ export function buildDemoD(): DraftCase {
       eintrittsdatum: "2025-09-01",
       kompetenzanalyseEnde: "2025-10-03",
       massnahmeEndeGeplant: "2026-08-31",
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -405,8 +412,9 @@ export function buildDemoD(): DraftCase {
     previousLuv: { rawText: previousRawText, extractedClaims: [claimPercent, claimDigi] },
     comparisonClaims: [claimPercent, claimDigi],
     sections: [],
-    foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "aktiv" }],
+    foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "aktiv", von: null, bis: null }],
     teilnehmerbesprechung: { besprochen: true, datum: "2026-04-02", mehrfertigungAusgehaendigt: true, besprechungNichtMoeglich: false, hinweisGrund: "" },
+    stammdaten: emptyStammdaten(),
     abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
@@ -470,6 +478,7 @@ export function buildDemoE(): DraftCase {
       eintrittsdatum: "2025-08-01",
       kompetenzanalyseEnde: "2025-09-02",
       massnahmeEndeGeplant: "2026-07-31",
+      tatsaechlicherLetzterTeilnahmetag: "2026-07-31",
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -524,8 +533,9 @@ export function buildDemoE(): DraftCase {
     previousLuv: { rawText: previousRawText, extractedClaims: [claim] },
     comparisonClaims: [claim],
     sections: [],
-    foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "abgeschlossen" }],
+    foerderzielbereichTracking: [{ bereich: "grundkompetenzen", status: "abgeschlossen", von: null, bis: null }],
     teilnehmerbesprechung: { besprochen: true, datum: "2026-07-28", mehrfertigungAusgehaendigt: true, besprechungNichtMoeglich: false, hinweisGrund: "" },
+    stammdaten: emptyStammdaten(),
     abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
@@ -615,6 +625,7 @@ export function buildDemoF(): DraftCase {
       eintrittsdatum: "2026-02-02",
       kompetenzanalyseEnde: "2026-03-06",
       massnahmeEndeGeplant: "2027-02-01",
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -649,11 +660,12 @@ export function buildDemoF(): DraftCase {
     comparisonClaims: [],
     sections: [],
     foerderzielbereichTracking: [
-      { bereich: "grundkompetenzen", status: "aktiv" },
-      { bereich: "berufliche_grundfaehigkeiten", status: "aktiv" },
-      { bereich: "berufsorientierung_berufswahl", status: "begonnen" }
+      { bereich: "grundkompetenzen", status: "aktiv", von: null, bis: null },
+      { bereich: "berufliche_grundfaehigkeiten", status: "aktiv", von: null, bis: null },
+      { bereich: "berufsorientierung_berufswahl", status: "begonnen", von: null, bis: null }
     ],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    stammdaten: emptyStammdaten(),
     abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null
@@ -711,6 +723,7 @@ export function buildDemoG(): DraftCase {
       eintrittsdatum: "2026-01-05",
       kompetenzanalyseEnde: "2026-02-16",
       massnahmeEndeGeplant: "2027-06-30",
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -737,6 +750,7 @@ export function buildDemoG(): DraftCase {
     sections: [],
     foerderzielbereichTracking: [],
     teilnehmerbesprechung: emptyTeilnehmerbesprechung(),
+    stammdaten: emptyStammdaten(),
     abschlussErgebnis: emptyAbschlussErgebnis(),
     approvedForExport: false,
     approvalTimestamp: null

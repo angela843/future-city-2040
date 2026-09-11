@@ -1,13 +1,14 @@
-# LUV-Generator BvB 1/2/3 – Version 0.2 (PH-17 V1.0 / Entwicklungsauftrag V0.2)
+# LUV-Generator BvB 1/2/3 – Version 0.2.1 (Korrekturauftrag A1–A7)
 
 > **TESTSYSTEM – Keine echten personenbezogenen Daten eingeben.**
 > Dieses System verwendet ausschließlich fiktive Testdaten. Es ist kein
 > Produktivsystem, keine Teilnehmerverwaltung und keine digitale Teilnehmerakte.
 
-> **Status: Abnahme- und Teststand.** Version 0.2 ist **nicht** als produktiv
+> **Status: Abnahme- und Teststand.** Version 0.2.1 ist **nicht** als produktiv
 > freigegeben gekennzeichnet. Sie dient der fachlichen Abnahme/dem Testen und
 > ist bewusst so lange als Entwurf zu behandeln, bis eine ausdrückliche
-> produktive Freigabe erfolgt.
+> produktive Freigabe erfolgt. Version 0.2.1 ist ein reiner **Korrekturstand**
+> zu Version 0.2 (Abnahmeblocker A1–A7), keine neue Entwicklungsstufe.
 
 Ein browserbasiertes Unterstützungswerkzeug für Koordinatorinnen und
 Koordinatoren zur Erstellung von **Start-LUV**, **Verlaufs-LUV** und
@@ -33,9 +34,10 @@ BA-LuV-Struktur 10/2025 (PH-17 V1.0).
 12. [Version 0.1 → 0.2 – Änderungsübersicht](#version-01--02--änderungsübersicht)
 13. [PH-15 Arbeitsfassung 1.1 – Ergänzungen](#ph-15-arbeitsfassung-11--ergänzungen)
 14. [PH-17 V1.0 / Entwicklungsauftrag V0.2 – Ergänzungen](#ph-17-v10--entwicklungsauftrag-v02--ergänzungen)
-15. [Testbericht (PASS/FAIL) und 3×3-Testmatrix](#testbericht-passfail-und-3×3-testmatrix)
-16. [Bekannte offene Punkte](#bekannte-offene-punkte)
-17. [Vorschläge für Version 0.3](#vorschläge-für-version-03)
+15. [Korrekturauftrag V0.2.1 (A1–A7) – Änderungsübersicht](#korrekturauftrag-v021-a1a7--änderungsübersicht)
+16. [Testbericht (PASS/FAIL) und 3×3-Testmatrix](#testbericht-passfail-und-3×3-testmatrix)
+17. [Bekannte offene Punkte](#bekannte-offene-punkte)
+18. [Vorschläge für Version 0.3](#vorschläge-für-version-03)
 
 ---
 
@@ -249,15 +251,17 @@ luv-generator/
 │   │   │                      # Maßnahmenbibliothek, Konkretisierungsassistent, Qualitäts-/Freigabecheck,
 │   │   │                      # Fristenlogik (fristenLogic.ts), BA-Förderzielbereiche,
 │   │   │                      # Vorvalidierung/harte Blocker (preValidation.ts)
-│   │   ├── privacy/           # Privacy Gateway (Allowlist, Identifikatoren, Sensitive-Scan)
+│   │   ├── privacy/           # Privacy Gateway (Allowlist, Identifikatoren, Sensitive-Scan,
+│   │   │                      # Freitext-Identifikator-Härtung: knownIdentifiers.ts, A7)
 │   │   ├── ai/                # Prompt Builder, Prompt-Templates (versioniert, u. a. fact_check v2, measures v2), Claude-Client, Testmodus-Mock
 │   │   ├── validation/        # Schema-, Evidenz-, Faktenabdeckungsprüfung (heuristisch + semantisch), Request-Validierung
 │   │   ├── luv_composer/      # Abschnittsauswahl/-reihenfolge, Redundanzprüfung, Gesamtredaktion, manueller Schutz,
-│   │   │                      # Abschluss-Modul-Rendering (renderAbschlussErgebnis.ts)
+│   │   │                      # Abschluss-Modul-Rendering (renderAbschlussErgebnis.ts), rollen-/zeitraumgruppiertes
+│   │   │                      # Förderziel-Rendering (renderGoals.ts, A5/A6)
 │   │   ├── export/            # DOCX-Export, Kopiertext
 │   │   ├── demo/              # 7 fiktive Demo-Fälle A-G (Start, Verlauf, Abschluss)
-│   │   ├── web/                # Express-App, Routen (inkl. Katalog-/Qualitäts-/Freigabecheck-/Fristen-/Abschluss-Modul-Routen), Session-Speicher, Logging
-│   │   └── __tests__/         # Vitest-Suite (Testfälle 1-10 + V02-T01..T19 + V0.2/PH-17-Matrix/Negativtests, 54 Tests)
+│   │   ├── web/                # Express-App, Routen (inkl. Katalog-/Qualitäts-/Freigabecheck-/Fristen-/Abschluss-Modul-/Stammdaten-Routen), Session-Speicher, Logging
+│   │   └── __tests__/         # Vitest-Suite (Testfälle 1-10 + V02-T01..T19 + V0.2/PH-17-Matrix/Negativtests + Korrekturauftrag A1-A7, 78 Tests)
 │   ├── package.json / tsconfig.json / vitest.config.ts / .env.example
 └── frontend/
     ├── src/
@@ -584,15 +588,144 @@ Punkte](#bekannte-offene-punkte) dokumentierte Priorisierungsentscheidung
 Parallel-Implementierung ohne Type-Checker) und **kein** stillschweigend
 weggelassener Teil des Auftrags.
 
+## Korrekturauftrag V0.2.1 (A1–A7) – Änderungsübersicht
+
+Version 0.2.1 ist ein **gezielter Korrekturstand** zu Version 0.2, nicht
+eine neue Entwicklungsstufe: umgesetzt wurden ausschließlich die sieben im
+Claude-Korrekturauftrag V0.2.1 benannten Abnahmeblocker A1–A7, auf Basis des
+bestehenden, lauffähigen V0.2-Codes. Funktionierende, von A1–A7 nicht
+betroffene Komponenten blieben unverändert; es wurden keine neuen
+fachlichen Funktionen, Module oder Anforderungen ergänzt.
+
+**A1 – Abschlussstruktur bereinigen.** Für `LUV_ART=ABSCHLUSS` wird jetzt
+ausschließlich die eigenständige Abschlussstruktur gerendert
+(`abschluss_ergebnis`) – keine automatisch mitgerenderten Start-/
+Verlaufsabschnitte (Ausgangslage, Entwicklung, Kompetenzbereiche,
+allgemeiner Förderbedarf, alte Gesamtbeurteilung/Perspektive) mehr. START
+und VERLAUF sind unverändert. *Betroffen:* `backend/src/domain/composerRules.ts`
+(`ABSCHLUSS_ORDER`), Test `v04_korrektur_a1a7.test.ts` (A1-Block).
+
+**A2 – Tatsächlicher letzter Teilnahmetag.** Neues Datumsfeld
+`BaseData.tatsaechlicherLetzterTeilnahmetag`. Die Abschluss-LUV-Frist wird
+ausschließlich daraus bestimmt (regulär **und** vorzeitig) – das geplante
+Maßnahmeende dient dafür nicht mehr als Ersatz. Fehlt das Datum, liefert
+`computeFristen` `abschlussLuvFaellig: null` plus einen expliziten
+`abschlussLuvFaelligHinweis`. *Betroffen:* `backend/src/domain/types.ts`,
+`backend/src/domain/fristenLogic.ts`, `backend/src/validation/requestSchemas.ts`,
+`backend/src/web/routes/cases.ts`, `frontend/src/types.ts`,
+`frontend/src/components/steps/Step1BaseData.tsx` (neues Datumsfeld, nur bei
+Abschluss-LUV sichtbar; Fristenbox zeigt den neuen Hinweis).
+
+**A3 – Abschluss-Vollständigkeitsvalidierung gehärtet.** HUMAN_CONFIRMED
+gilt jetzt nur noch als gültig, wenn `humanConfirmed=true` **und** ein
+fachlich zulässiger, nicht-null/nicht-leerer Wert vorhanden ist (bislang
+konnte `humanConfirmed=true` mit `value=null` formal durchgehen) – geprüft
+für Ausbildungsreife, Berufseignung, Unterstützungsbedarf. Zusätzlich: bei
+Unterstützungsbedarf „Ja" ist die Beschreibung/Empfehlung (Feld 20) vor der
+Freigabe Pflicht, bei „Nein" wird sie nicht erzwungen. Die Sperre liegt
+serverseitig in `POST /:id/approve` (`409 pre_validation_blocked`).
+*Betroffen:* `backend/src/domain/preValidation.ts`
+(`checkAbschlussHumanConfirmed` gehärtet, neu `checkUnterstuetzungsbedarfBeschreibung`),
+`backend/src/web/routes/cases.ts`.
+
+**A4 – Gemeinsamer Stammdatenkern für START/VERLAUF/ABSCHLUSS.** Neue,
+geteilte `Stammdaten`-Struktur (LuV-Datum, Vorname, Nachname, Kundennummer,
+Träger/Einrichtung, Ansprechperson, Telefon, E-Mail, BvB-3-Sonderfeld
+Lernort Wohnen/Internat) auf Fallebene (`CaseRecord.stammdaten`), verfügbar
+für alle drei LUV-Arten. Die zuvor nur im Abschluss-Modul geführten
+Identifikator-Felder wurden dorthin migriert (`AbschlussErgebnis` enthält
+sie nicht mehr) – keine doppelten konkurrierenden Stammdatenmodelle mehr.
+Neue Route `PUT /:id/stammdaten` (inkl. BvB-3-Gating für „Lernort
+Wohnen/Internat", vormals in `PUT /:id/abschluss-ergebnis`). Das
+bestehende, bereits seit Version 0.1 für alle LUV-Arten gemeinsame Feld
+`BaseData.teilnehmerName` bleibt bewusst unverändert (kein expliziter
+Auftragsbestandteil, siehe „Offene Punkte" unten). *Betroffen:*
+`backend/src/domain/types.ts` (`Stammdaten`, `emptyStammdaten`,
+`AbschlussErgebnis` verkleinert), `backend/src/validation/requestSchemas.ts`
+(`StammdatenSchema`), `backend/src/web/routes/cases.ts` (neue Route),
+`backend/src/export/docxExport.ts` (Stammdaten-Block jetzt für alle
+LUV-Arten statt nur Abschluss), `frontend/src/types.ts`,
+`frontend/src/components/steps/Step1BaseData.tsx` (neuer Stammdaten-Block),
+`frontend/src/components/steps/Step7Preview.tsx` (Abschluss-Modul-UI
+entsprechend verkleinert), `backend/src/demo/demoCases.ts`.
+
+**A5 – Förderzielbereiche mit Von/Bis-Zeiträumen.** `FoerderzielbereichTracking`
+um `von`/`bis` (Datum) erweitert; ein reines Status-Update löscht einen
+bereits erfassten Zeitraum nicht (Merge statt Überschreiben). Die
+Förder-/Qualifizierungsplanung (Bereich, Zeitraum, Status) wird jetzt
+deterministisch in den `support_goals`-Output gerendert; der interne
+Verlaufs-Status „erneut geöffnet" erscheint dabei bewusst **nicht** wörtlich
+als eigenständiges Feld (wird wie „aktiv" ausgegeben – eine wiedereröffnete
+Förderung ist fachlich nichts anderes als eine aktuell wieder aktive).
+*Betroffen:* `backend/src/domain/types.ts`,
+`backend/src/validation/requestSchemas.ts`, `backend/src/web/routes/cases.ts`
+(Merge-Logik + Re-Rendering), `backend/src/luv_composer/renderGoals.ts`,
+`frontend/src/types.ts`, `frontend/src/components/steps/Step6SupportNeeds.tsx`
+(Von/Bis-Eingabefelder je Bereich).
+
+**A6 – Rollenbezogene Zielvereinbarung tatsächlich gerendert.** Die
+bereits gespeicherte Rolle je Förderziel (`SupportGoal.rolle`) wird jetzt im
+`support_goals`-Output nach Rolle gruppiert dargestellt; Rollen ohne
+zugeordnetes Ziel erzeugen keine leere Überschrift (keine künstliche
+KI-Füllung). Claude leitet nie selbst eine Rolle ab – sie stammt
+ausschließlich aus strukturierter menschlicher Eingabe.
+*Betroffen:* `backend/src/luv_composer/renderGoals.ts` (vollständig
+überarbeitet, siehe auch A5 – beide Punkte teilen sich denselben Renderer).
+
+**A7 – Privacy Gateway für Freitext gehärtet.** Vor jedem Claude-Aufruf
+werden zusätzlich zu den bisherigen Schlüssel-basierten Regeln auch
+**bekannte Identifikator-Werte** (Vorname, Nachname, Kundennummer, Telefon,
+E-Mail, Geburtsdatum, Teilnehmername – aus dem lokalen Stammdatenkern/
+BaseData) rekursiv aus jedem Freitextfeld entfernt, bevor der Claude-Payload
+entsteht. Enthält ein Freitext danach noch ein E-Mail-Muster, das auf
+keinen bekannten, bereits ersetzten Wert zurückgeht (also nicht sicher
+behandelbar ist), wird die Generierung dieses Inhalts vollständig blockiert
+statt den Text ungefiltert zu senden. Die bestehende Allowlist-/
+Schlüssel-Filterung bleibt unverändert bestehen – die Freitext-Prüfung ist
+eine zusätzliche Schicht. Keine Originalwerte werden geloggt (Logging
+enthält ohnehin nur IDs/Status, nie Payload-Inhalte). *Betroffen:*
+`backend/src/privacy/gateway.ts` (neuer Redaktionsschritt + E-Mail-Block),
+neu `backend/src/privacy/knownIdentifiers.ts`, `backend/src/ai/aiService.ts`,
+`backend/src/validation/semanticFactCheck.ts`,
+`backend/src/luv_composer/overallRedaction.ts`,
+`backend/src/web/routes/ai.ts` (alle sechs KI-Routen).
+
+**Zwei technische Ableitungen ohne eigene fachliche Entscheidung** (zur
+Transparenz explizit benannt, jeweils die konservativste, umfangschonendste
+Auslegung des Korrekturauftrags):
+- A3s Formulierung „Alle für den Abschluss fachlich erforderlichen
+  strukturierten Felder vor Finalfreigabe prüfen" wurde als Zusammenfassung
+  der bereits explizit benannten Pflichtfelder gelesen (die drei
+  HUMAN_CONFIRMED-Felder plus die bedingte Unterstützungsbedarf-Beschreibung),
+  nicht als zusätzlicher, unbenannter Pflichtfeldkatalog – es wurden keine
+  neuen harten Blocker für weitere Freitextfelder (z. B. Vermittlungsfähigkeit,
+  Eingliederungsergebnis) ergänzt, da der Auftrag dafür keine eindeutige,
+  abschließende Liste nennt und „Erweitere den Umfang nicht" gilt.
+- A4s Vorgabe „keine doppelten konkurrierenden Stammdatenmodelle" wurde auf
+  das explizit benannte Problem bezogen (die Abschluss-Modul-eigene Kopie
+  von Vorname/Nachname/etc.) und nicht auf das bereits seit Version 0.1
+  bestehende, unabhängige Feld `BaseData.teilnehmerName` ausgeweitet – dessen
+  Entfernung/Zusammenführung hätte praktisch jede Testdatei, jeden Demo-Fall
+  und den DOCX-Export berührt, war im Auftrag nicht ausdrücklich verlangt und
+  wurde daher bewusst nicht angetastet.
+
+**Nicht Bestandteil von V0.2.1** (wie im Korrekturauftrag Abschnitt „Nicht
+Bestandteil" gefordert, nicht bearbeitet): Mapping in den originalen
+BA-PDF-/Word-Vordruck, neue Produktivfreigabe, neue Kompetenzmodelle oder
+Förderzielbereiche, neue Dokumentationsfunktion/Teilnehmerakte, Erweiterung
+des Claude-Einsatzes, Neugestaltung des gesamten Frontends, Portierung des
+Einzeldatei-Artifacts (technisch nicht zwingend für A1–A7 erforderlich),
+sowie alle sonstigen „gelben Punkte" des Abnahmeberichts außerhalb A1–A7.
+
 ## Testbericht (PASS/FAIL) und 3×3-Testmatrix
 
 Stand: vollständiger Lauf der Backend-Vitest-Suite unmittelbar vor der
-Auslieferung dieser Version. **Alle 54 Tests PASS**, keine bekannten
+Auslieferung dieser Version. **Alle 78 Tests PASS**, keine bekannten
 fehlschlagenden Tests.
 
 ```
-Test Files  8 passed (8)
-     Tests  54 passed (54)
+Test Files  9 passed (9)
+     Tests  78 passed (78)
 ```
 
 | Datei | Tests | Status |
@@ -605,6 +738,7 @@ Test Files  8 passed (8)
 | `v02.test.ts` | 10 | ✅ PASS |
 | `v02_ph15_v11.test.ts` | 9 | ✅ PASS |
 | `v03_ph17.test.ts` | 16 | ✅ PASS |
+| `v04_korrektur_a1a7.test.ts` | 24 | ✅ PASS |
 
 ### 3×3-Testmatrix (START/VERLAUF/ABSCHLUSS × BvB 1/BvB 2/BvB 3)
 
@@ -643,7 +777,69 @@ Alle Negativtests laufen automatisiert in `v03_ph17.test.ts` bzw. (Test 7)
 regressionsgeschützt in `v02.test.ts`; keiner davon erfordert einen echten
 Anthropic-API-Key (Testmodus, siehe [Testmodus](#testmodus-ohne-api-key)).
 
+**Die 3×3-Matrix wurde für Version 0.2.1 erneut vollständig ausgeführt**
+(`v03_ph17.test.ts`, unverändert Teil der Suite) – alle 9 Kombinationen
+weiterhin ✅ PASS, keine Regression durch A1–A7 (insbesondere: das durch A1
+verkleinerte Abschluss-Abschnitts-Skelett wird von diesem Test dynamisch aus
+`sectionOrderForLuvArt` abgeleitet und daher automatisch mitgeprüft).
+
+### Negativ-/Regressionstests A1–A7 (`v04_korrektur_a1a7.test.ts`)
+
+| # | Szenario | Erwartetes Verhalten | Ergebnis |
+|---|---|---|---|
+| A1-1 | Abschluss-LuV anlegen | Abschnitts-Skelett enthält ausschließlich `abschluss_ergebnis`, keinen Start-/Verlaufs-Kompetenzabschnitt | ✅ PASS |
+| A1-2 | Start-/Verlaufs-LuV anlegen | Abschnitts-Skelett unverändert gegenüber V0.2 | ✅ PASS |
+| A2-1 | Regulärer Abschluss mit gesetztem tatsächlichen Teilnahmetag | Abschlussfrist = dieses Datum, nicht das geplante Maßnahmeende | ✅ PASS |
+| A2-2 | Vorzeitige Beendigung mit früherem tatsächlichen Austrittsdatum | Abschlussfrist = das frühere tatsächliche Datum | ✅ PASS |
+| A2-3 | Tatsächlicher Teilnahmetag fehlt | Keine Abschlussfrist ausgegeben (`null`), stattdessen Validierungshinweis | ✅ PASS |
+| A3-1 | `humanConfirmed=true` + `value=null` (Ausbildungsreife) | Freigabe blockiert (`409 pre_validation_blocked`) trotz gesetztem Flag | ✅ PASS |
+| A3-2 | `humanConfirmed=true` + leerer Freitext (Berufseignung) | Freigabe blockiert | ✅ PASS |
+| A3-3 | Unterstützungsbedarf=Ja ohne Beschreibung/Empfehlung | Freigabe blockiert; nach Ergänzung freigebbar | ✅ PASS |
+| A3-4 | Unterstützungsbedarf=Nein ohne Beschreibung | Freigabe **nicht** blockiert (keine künstliche Pflicht) | ✅ PASS |
+| A4-1/2/3 | Stammdaten setzen für START/VERLAUF/ABSCHLUSS | `PUT /:id/stammdaten` funktioniert für alle drei LUV-Arten | ✅ PASS |
+| A4-4 | Struktur-Check nach Fallanlage | `AbschlussErgebnis` enthält keine Identifikator-/LuV-Datum-Felder mehr | ✅ PASS |
+| A5-1 | Von/Bis für einen Förderzielbereich setzen | Wird gespeichert und im START-Output feldgerecht ausgegeben | ✅ PASS |
+| A5-2 | Reines Status-Update nach gesetztem Zeitraum | Zeitraum bleibt erhalten (kein Datenverlust durch Merge-Logik) | ✅ PASS |
+| A5-3 | VERLAUF: Status „abgeschlossen" | Erscheint im Output als „Maßnahme abgeschlossen" | ✅ PASS |
+| A5-4 | Status „erneut geöffnet" | Erscheint **nicht** wörtlich im Output (nur als „aktiv") | ✅ PASS |
+| A6-1 | Mehrere Ziele mit unterschiedlichen Rollen | Werden im Output korrekt nach Rolle gruppiert, keine leeren Rollenblöcke | ✅ PASS |
+| A7-1 | Name im Beobachtungstext | Wird auch im Freitext ersetzt, erscheint nicht im Claude-Payload | ✅ PASS |
+| A7-2 | Kundennummer im Freitext | Wird ersetzt | ✅ PASS |
+| A7-3 | Telefonnummer im Freitext | Wird ersetzt | ✅ PASS |
+| A7-4 | Bekannte E-Mail-Adresse im Freitext | Wird ersetzt | ✅ PASS |
+| A7-5 | Unbekannte E-Mail-Adresse im Freitext (kein gespeicherter Wert) | Als nicht sicher behandelbar blockiert statt ungefiltert gesendet | ✅ PASS |
+| A7-6 | Strukturierte direkte Identifikatoren (Schlüssel-basiert) | Bestehende Allowlist-/Schlüssel-Filterung bleibt zusätzlich bestehen | ✅ PASS |
+
+Backend-Typecheck (`npx tsc --noEmit`) und Frontend-Build (`npm run build`)
+wurden nach Abschluss von A1–A7 erneut fehlerfrei ausgeführt.
+
 ## Bekannte offene Punkte
+
+### Offene Punkte innerhalb A1–A7
+
+- **A3 „alle fachlich erforderlichen Felder"**: derzeit werden ausschließlich
+  die drei explizit benannten HUMAN_CONFIRMED-Felder plus die bedingte
+  Unterstützungsbedarf-Beschreibung hart geprüft (siehe technische Ableitung
+  oben). Ob z. B. Vermittlungsfähigkeit oder Eingliederungsergebnis ebenfalls
+  vor Finalfreigabe als Pflichtfeld gelten sollen, ist im Korrekturauftrag
+  nicht eindeutig benannt und daher offen.
+- **A7 Telefonnummern-Muster ohne bekannten Stammdatenwert**: anders als bei
+  E-Mail-Adressen wird für Telefonnummern kein generisches
+  Muster-basiertes Blocking ergänzt (nur der exakte, bereits gespeicherte
+  Wert wird redigiert). Grund: eine generische Telefonnummern-Erkennung
+  (Ziffern mit Trennzeichen) kollidiert regelmäßig mit harmlosen
+  Datumsangaben (z. B. „2026-01-01") und hätte ein neues, nicht im Auftrag
+  verlangtes Fehlerrisiko (Über-Blockierung legitimer Texte) eingeführt.
+  Bereits lokal bekannte Telefonnummern werden weiterhin zuverlässig
+  redigiert; ein unbekanntes, frei erfundenes Telefonnummern-Muster im
+  Freitext würde aktuell nicht automatisch blockiert.
+
+### Offene Punkte außerhalb des Umfangs von V0.2.1
+
+Alle unten in diesem Abschnitt (bereits aus Version 0.2 übernommenen)
+Punkte sowie alle „gelben Punkte" des Abnahmeberichts, die nicht A1–A7
+zugeordnet sind, bleiben ausdrücklich außerhalb des Umfangs dieses
+Korrekturstands.
 
 Alle mit `TODO: fachlich abgleichen` im Code markierten Stellen sind bewusst
 konservativ/vereinfacht gelöst und sollten vor produktivem Einsatz fachlich

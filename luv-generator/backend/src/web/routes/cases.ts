@@ -2,7 +2,7 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { ApiError, asyncHandler, notFoundCase } from "../asyncHandler.js";
 import { getCase, createCase, putCase } from "../store.js";
-import { emptyAbschlussErgebnis } from "../../domain/types.js";
+import { emptyAbschlussErgebnis, emptyStammdaten } from "../../domain/types.js";
 import { logEvent } from "../logger.js";
 import {
   AbschlussErgebnisSchema,
@@ -17,6 +17,7 @@ import {
   FurtherFindingsSchema,
   PreviousLuvSchema,
   SectionManualEditSchema,
+  StammdatenSchema,
   StartingSituationSchema,
   SubCompetenceInputSchema,
   SupportAreaStatusUpdateSchema,
@@ -32,7 +33,12 @@ import { renderSupportGoalsSectionText } from "../../luv_composer/renderGoals.js
 import { renderAbschlussErgebnisSectionText } from "../../luv_composer/renderAbschlussErgebnis.js";
 import { runQualityCheck } from "../../domain/qualityCheck.js";
 import { runReleaseCheck } from "../../domain/releaseCheck.js";
-import { checkAbschlussHumanConfirmed, checkFoerderbedarfBeleg, checkGeneralPreValidation } from "../../domain/preValidation.js";
+import {
+  checkAbschlussHumanConfirmed,
+  checkFoerderbedarfBeleg,
+  checkGeneralPreValidation,
+  checkUnterstuetzungsbedarfBeschreibung
+} from "../../domain/preValidation.js";
 import { checkForClarification } from "../../domain/clarificationAssistant.js";
 import { checkKompetenzanalyseDauer, computeFristen } from "../../domain/fristenLogic.js";
 
@@ -48,6 +54,7 @@ casesRouter.post(
         geburtsdatum: baseData.geburtsdatum ?? null,
         kompetenzanalyseEnde: baseData.kompetenzanalyseEnde ?? null,
         massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null,
+        tatsaechlicherLetzterTeilnahmetag: baseData.tatsaechlicherLetzterTeilnahmetag ?? null,
         verlaufAnlass: baseData.verlaufAnlass ?? null,
         verlaengerungstermin: baseData.verlaengerungstermin ?? null,
         massnahmeziel: baseData.massnahmeziel ?? null
@@ -80,6 +87,7 @@ casesRouter.post(
         besprechungNichtMoeglich: false,
         hinweisGrund: ""
       },
+      stammdaten: emptyStammdaten(),
       abschlussErgebnis: emptyAbschlussErgebnis(),
       approvedForExport: false,
       approvalTimestamp: null
@@ -111,6 +119,7 @@ casesRouter.put(
       geburtsdatum: baseData.geburtsdatum ?? null,
       kompetenzanalyseEnde: baseData.kompetenzanalyseEnde ?? null,
       massnahmeEndeGeplant: baseData.massnahmeEndeGeplant ?? null,
+      tatsaechlicherLetzterTeilnahmetag: baseData.tatsaechlicherLetzterTeilnahmetag ?? null,
       verlaufAnlass: baseData.verlaufAnlass ?? null,
       verlaengerungstermin: baseData.verlaengerungstermin ?? null,
       massnahmeziel: baseData.massnahmeziel ?? null
@@ -232,7 +241,7 @@ casesRouter.put(
     Object.assign(goal, input);
     goal.manualOverride = input.status === "bearbeitet" || input.status === "neu_formuliert" ? true : goal.manualOverride;
 
-    const renderedText = renderSupportGoalsSectionText(record.supportGoals);
+    const renderedText = renderSupportGoalsSectionText(record.supportGoals, record.foerderzielbereichTracking);
     const applyResult = setSectionText(record.sections, "support_goals", renderedText, [], [], { manualEdit: false });
     if (applyResult.applied) {
       record.sections = applyResult.sections;
@@ -421,16 +430,6 @@ casesRouter.put(
     if (!record) throw notFoundCase();
     const input = AbschlussErgebnisSchema.parse(req.body);
 
-    // Migrationsplan 0.1->0.2 Abschnitt 3 Punkt 7: das BvB-3-Sonderfeld "Lernort
-    // Wohnen/Internat" darf ausserhalb von BvB 3 weder erfasst noch angenommen werden.
-    if (record.baseData.massnahmeart !== "bvb3" && input.lernortWohnenInternat !== null) {
-      throw new ApiError(
-        400,
-        "bvb3_field_not_applicable",
-        'Das Feld „Lernort Wohnen/Internat" ist ein BvB-3-Sonderfeld und darf bei dieser Maßnahmeart nicht gesetzt werden.'
-      );
-    }
-
     record.abschlussErgebnis = input;
     const renderedText = renderAbschlussErgebnisSectionText(record.abschlussErgebnis, record.baseData, record.teilnehmerbesprechung);
     const applyResult = setSectionText(record.sections, "abschluss_ergebnis", renderedText, [], [], { manualEdit: false });
@@ -445,17 +444,59 @@ casesRouter.put(
 );
 
 casesRouter.put(
+  "/:id/stammdaten",
+  asyncHandler(async (req, res) => {
+    const record = getCase(req.params.id);
+    if (!record) throw notFoundCase();
+    const input = StammdatenSchema.parse(req.body);
+
+    // Korrekturauftrag V0.2.1, A4: das BvB-3-Sonderfeld "Lernort Wohnen/Internat" darf
+    // ausserhalb von BvB 3 weder erfasst noch angenommen werden (vormals in A5 des
+    // Migrationsplans 0.1->0.2 fuer das Abschluss-Modul, jetzt Teil des gemeinsamen
+    // Stammdatenkerns und fuer alle LUV-Arten gleichermassen durchgesetzt).
+    if (record.baseData.massnahmeart !== "bvb3" && input.lernortWohnenInternat !== null) {
+      throw new ApiError(
+        400,
+        "bvb3_field_not_applicable",
+        'Das Feld „Lernort Wohnen/Internat" ist ein BvB-3-Sonderfeld und darf bei dieser Maßnahmeart nicht gesetzt werden.'
+      );
+    }
+
+    record.stammdaten = input;
+    putCase(record);
+    logEvent("stammdaten_updated", { caseId: record.id });
+    res.json({ stammdaten: record.stammdaten });
+  })
+);
+
+casesRouter.put(
   "/:id/foerderzielbereich-tracking",
   asyncHandler(async (req, res) => {
     const record = getCase(req.params.id);
     if (!record) throw notFoundCase();
     const input = FoerderzielbereichTrackingUpdateSchema.parse(req.body);
     const existingIndex = record.foerderzielbereichTracking.findIndex((t) => t.bereich === input.bereich);
+    const existing = existingIndex >= 0 ? record.foerderzielbereichTracking[existingIndex] : null;
+    // Korrekturauftrag V0.2.1, A5: von/bis sind optional getrennt vom Status setzbar -
+    // ein reines Status-Update darf einen bereits erfassten Zeitraum nicht loeschen.
+    const entry = {
+      bereich: input.bereich,
+      status: input.status,
+      von: input.von !== undefined ? input.von : (existing?.von ?? null),
+      bis: input.bis !== undefined ? input.bis : (existing?.bis ?? null)
+    };
     if (existingIndex >= 0) {
-      record.foerderzielbereichTracking[existingIndex] = input;
+      record.foerderzielbereichTracking[existingIndex] = entry;
     } else {
-      record.foerderzielbereichTracking.push(input);
+      record.foerderzielbereichTracking.push(entry);
     }
+
+    const renderedGoals = renderSupportGoalsSectionText(record.supportGoals, record.foerderzielbereichTracking);
+    const applyResult = setSectionText(record.sections, "support_goals", renderedGoals, [], [], { manualEdit: false });
+    if (applyResult.applied) {
+      record.sections = applyResult.sections;
+    }
+
     putCase(record);
     logEvent("foerderzielbereich_tracking_updated", { caseId: record.id, bereich: input.bereich, status: input.status });
     res.json(record.foerderzielbereichTracking);
@@ -491,6 +532,10 @@ casesRouter.post(
     const abschlussHumanConfirmed = checkAbschlussHumanConfirmed(record);
     if (abschlussHumanConfirmed.blocked) {
       throw new ApiError(409, "pre_validation_blocked", abschlussHumanConfirmed.reason ?? "Freigabe blockiert.");
+    }
+    const unterstuetzungsbedarfBeschreibung = checkUnterstuetzungsbedarfBeschreibung(record);
+    if (unterstuetzungsbedarfBeschreibung.blocked) {
+      throw new ApiError(409, "pre_validation_blocked", unterstuetzungsbedarfBeschreibung.reason ?? "Freigabe blockiert.");
     }
 
     // Version 0.2 (PH-15 Abschnitt 43, MUSS): rote, nicht manuell geprüfte Abschnitte

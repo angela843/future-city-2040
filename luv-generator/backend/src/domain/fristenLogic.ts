@@ -7,10 +7,13 @@
  * (PH-17 V1.0 Abschnitt 6: "muss das tatsaechliche Ende der Kompetenzanalyse
  * beruecksichtigen").
  *
- * TODO: fachlich abgleichen - "letzter Tag der Teilnahme" (Abschluss-LUV) kann vom
- * geplanten Massnahmeende abweichen (z.B. vorzeitiger Austritt). Version 0.2 bildet
- * nur das geplante Massnahmeende ab; der tatsaechliche Austrittstag muesste bei
- * Abweichung manuell beruecksichtigt werden.
+ * Korrekturauftrag V0.2.1 (A2): die Abschluss-LUV-Frist wird ausschliesslich aus dem
+ * tatsaechlichen letzten Teilnahmetag (`baseData.tatsaechlicherLetzterTeilnahmetag`)
+ * bestimmt - sowohl bei regulaerem Abschluss als auch bei vorzeitiger Beendigung. Das
+ * geplante Massnahmeende (`massnahmeEndeGeplant`) ist ein reiner Planungswert und wird
+ * dafuer NICHT mehr ersatzweise herangezogen. Fehlt das tatsaechliche Datum, wird keine
+ * Abschlussfrist als fachlich verbindlich ausgegeben (`abschlussLuvFaellig: null`),
+ * stattdessen `abschlussLuvFaelligHinweis`.
  */
 import { BaseData, Massnahmeart } from "./types.js";
 
@@ -23,8 +26,17 @@ export interface FristenResult {
   weitereVerlaufsLuvFaellig: string | null;
   /** Verlauf vor Verlaengerung: BvB 1/BvB 2 spaetestens 3 Wochen, BvB 3 spaetestens 4 Wochen vorher. */
   verlaengerungsVerlaufsLuvFaellig: string | null;
-  /** Abschluss-LUV: spaetestens am letzten Tag der Teilnahme. */
+  /**
+   * Abschluss-LUV: exakt der tatsaechliche letzte Teilnahmetag (Korrekturauftrag
+   * V0.2.1, A2). null, wenn dieses Datum noch nicht erfasst ist - dann darf keine
+   * andere Datumsquelle als Ersatz verwendet werden.
+   */
   abschlussLuvFaellig: string | null;
+  /**
+   * Gesetzt, wenn `abschlussLuvFaellig` mangels erfasstem tatsaechlichen letzten
+   * Teilnahmetag nicht bestimmt werden konnte (Korrekturauftrag V0.2.1, A2).
+   */
+  abschlussLuvFaelligHinweis: string | null;
 }
 
 function addDays(iso: string, days: number): string | null {
@@ -56,7 +68,10 @@ export function computeFristen(baseData: BaseData): FristenResult {
     verlaengerungsVerlaufsLuvFaellig: baseData.verlaengerungstermin
       ? addDays(baseData.verlaengerungstermin, verlaengerungsTage)
       : null,
-    abschlussLuvFaellig: baseData.massnahmeEndeGeplant ?? null
+    abschlussLuvFaellig: baseData.tatsaechlicherLetzterTeilnahmetag ?? null,
+    abschlussLuvFaelligHinweis: baseData.tatsaechlicherLetzterTeilnahmetag
+      ? null
+      : "Kein tatsächlicher letzter Teilnahmetag/Austrittsdatum erfasst - die Abschluss-LUV-Frist kann nicht als fachlich verbindlich ausgegeben werden. Das geplante Maßnahmeende darf hierfür nicht ersatzweise verwendet werden."
   };
 }
 

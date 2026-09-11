@@ -156,20 +156,20 @@ describe("V0.2 / PH-17 - Negativtests (harte Blocker)", () => {
     expect(okApprove.body.approvedForExport).toBe(true);
   });
 
-  it("Negativ 4: BvB-3-Sonderfeld 'Lernort Wohnen/Internat' wird bei BvB 2 abgelehnt, bei BvB 3 angenommen", async () => {
+  it("Negativ 4: BvB-3-Sonderfeld 'Lernort Wohnen/Internat' wird bei BvB 2 abgelehnt, bei BvB 3 angenommen (seit Korrekturauftrag V0.2.1/A4 Teil des gemeinsamen Stammdatenkerns, PUT /stammdaten)", async () => {
     const bvb2 = await createCase({ massnahmeart: "bvb2", luvArt: "abschluss" });
     const rejectRes = await request(app)
-      .put(`/api/cases/${bvb2.body.id}/abschluss-ergebnis`)
-      .send({ ...emptyAbschlussPayload(), lernortWohnenInternat: "ja" });
+      .put(`/api/cases/${bvb2.body.id}/stammdaten`)
+      .send({ ...emptyStammdatenPayload(), lernortWohnenInternat: "ja" });
     expect(rejectRes.status).toBe(400);
     expect(rejectRes.body.error.code).toBe("bvb3_field_not_applicable");
 
     const bvb3 = await createCase({ massnahmeart: "bvb3", luvArt: "abschluss" });
     const acceptRes = await request(app)
-      .put(`/api/cases/${bvb3.body.id}/abschluss-ergebnis`)
-      .send({ ...emptyAbschlussPayload(), lernortWohnenInternat: "ja" });
+      .put(`/api/cases/${bvb3.body.id}/stammdaten`)
+      .send({ ...emptyStammdatenPayload(), lernortWohnenInternat: "ja" });
     expect(acceptRes.status).toBe(200);
-    expect(acceptRes.body.abschlussErgebnis.lernortWohnenInternat).toBe("ja");
+    expect(acceptRes.body.stammdaten.lernortWohnenInternat).toBe("ja");
   });
 
   it("Negativ 5: Verlauf ohne bestätigte, vergleichbare Zeitpunkte erzeugt keine erfundene Entwicklung ('insufficient_data')", async () => {
@@ -201,28 +201,17 @@ describe("V0.2 / PH-17 - Negativtests (harte Blocker)", () => {
   });
 });
 
-function emptyAbschlussPayload() {
+function emptyStammdatenPayload() {
   return {
-    abschlussLuvVom: null,
-    uebermittlungsanlass: null,
-    vorzeitigeBeendigungArt: null,
+    luvDatum: null,
     vorname: "",
     nachname: "",
     kundennummer: "",
-    lernortWohnenInternat: null,
     traegerEinrichtung: "",
     ansprechpersonVorname: "",
     ansprechpersonNachname: "",
     telefon: "",
     email: "",
-    hauptschulabschlussErreicht: null,
-    ausbildungsreifeErreicht: { value: null, humanConfirmed: false },
-    berufseignung: { value: "", humanConfirmed: false },
-    qualifizierungsAusbildungsbausteine: "",
-    vermittlungsfaehigkeit: "",
-    eingliederungsergebnis: "",
-    unterstuetzungsbedarf: { value: null, humanConfirmed: false },
-    unterstuetzungsbedarfBeschreibungEmpfehlung: "",
-    stabilisierungFestigung: ""
+    lernortWohnenInternat: null
   };
 }

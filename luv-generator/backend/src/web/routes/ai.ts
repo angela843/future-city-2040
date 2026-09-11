@@ -19,6 +19,7 @@ import { isConfirmedComparableDevelopment } from "../../domain/comparisonLogic.j
 import { LuvSection, SupportGoal } from "../../domain/types.js";
 import { MEASURE_LIBRARY } from "../../domain/measureLibrary.js";
 import { checkFoerderbedarfBeleg, checkGeneralPreValidation, PreValidationBlock } from "../../domain/preValidation.js";
+import { directIdentifierValuesForCase } from "../../privacy/knownIdentifiers.js";
 import { nanoid } from "nanoid";
 
 export const aiRouter = Router();
@@ -68,7 +69,7 @@ aiRouter.post(
     const input = StructureNotesRequestSchema.parse(req.body);
     const payload = structureNotesPayload(input.areaLabel, input.rawNotes, input.sourceTypes);
     const evidenceIds = record.evidence.map((e) => e.id);
-    const result = await runAiTask("structure_notes", record.id, payload, evidenceIds);
+    const result = await runAiTask("structure_notes", record.id, payload, evidenceIds, directIdentifierValuesForCase(record));
     logEvent("ai_structure_notes", { caseId: record.id, kind: result.kind });
     const { status, body } = resultToHttp(result);
     res.status(status).json(body);
@@ -118,6 +119,7 @@ aiRouter.post(
         res.json({ kind: "insufficient_data", questions: ["Es liegen noch keine bestätigten, vergleichbaren Zeitpunkte vor. Bitte zunächst Vergleichseinträge bestätigen."] });
         return;
       }
+      const knownIdentifierValues = directIdentifierValuesForCase(record);
       const texts: string[] = [];
       const warnings: string[] = [];
       for (const claim of confirmedClaims) {
@@ -128,7 +130,7 @@ aiRouter.post(
           claim.previousRating,
           claim.currentRating
         );
-        const result = await runAiTask("development_comparison", record.id, payload, []);
+        const result = await runAiTask("development_comparison", record.id, payload, [], knownIdentifierValues);
         if (result.kind === "ok") {
           texts.push(result.text);
           warnings.push(...result.warnings);
@@ -159,9 +161,10 @@ aiRouter.post(
       return;
     }
 
+    const knownIdentifierValues = directIdentifierValuesForCase(record);
     const payload = formulateSectionPayload(record, key, areaLabelForSection(key), notes, record.evidence);
     const evidenceIds = record.evidence.map((e) => e.id);
-    const result = await runAiTask("formulate_section", record.id, payload, evidenceIds);
+    const result = await runAiTask("formulate_section", record.id, payload, evidenceIds, knownIdentifierValues);
     logEvent("ai_section_generated", { caseId: record.id, sectionKey: key, kind: result.kind });
 
     if (result.kind === "ok") {
@@ -170,7 +173,8 @@ aiRouter.post(
         key,
         result.text,
         record.evidence,
-        notes.map((n) => n.observationNotes)
+        notes.map((n) => n.observationNotes),
+        knownIdentifierValues
       );
       const applyResult = setSectionText(record.sections, key, result.text, result.evidenceIds, result.warnings, { manualEdit: false });
       if (!applyResult.applied) {
@@ -216,7 +220,7 @@ aiRouter.post(
     }
 
     const payload = supportGoalsPayload(record, areasWithoutGoals);
-    const result = await runAiTask("support_goal_suggestions", record.id, payload, []);
+    const result = await runAiTask("support_goal_suggestions", record.id, payload, [], directIdentifierValuesForCase(record));
     logEvent("ai_support_goals_suggested", { caseId: record.id, kind: result.kind });
 
     if (result.kind !== "ok") {
@@ -292,7 +296,7 @@ aiRouter.post(
       group: m.group
     }));
     const payload = measuresPayload(record, confirmedGoals, libraryMeasures);
-    const result = await runAiTask("measure_suggestions", record.id, payload, []);
+    const result = await runAiTask("measure_suggestions", record.id, payload, [], directIdentifierValuesForCase(record));
     logEvent("ai_measures_suggested", { caseId: record.id, kind: result.kind });
     const { status, body } = resultToHttp(result);
     res.status(status).json(body);

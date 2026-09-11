@@ -10,6 +10,7 @@ import { CaseRecord, LuvSection } from "../domain/types.js";
 import { overallRedactionPayload } from "../ai/payloadBuilders.js";
 import { runAiTask } from "../ai/aiService.js";
 import { runSemanticFactCheck } from "../validation/semanticFactCheck.js";
+import { directIdentifierValuesForCase } from "../privacy/knownIdentifiers.js";
 
 export interface OverallRedactionOutcome {
   sections: LuvSection[];
@@ -43,8 +44,9 @@ export async function applyOverallRedaction(caseRecord: CaseRecord): Promise<Ove
   }
 
   const availableEvidenceIds = caseRecord.evidence.map((e) => e.id);
+  const knownIdentifierValues = directIdentifierValuesForCase(caseRecord);
   const rawPayload = overallRedactionPayload(caseRecord, editableSections);
-  const result = await runAiTask("overall_redaction", caseRecord.id, rawPayload, availableEvidenceIds);
+  const result = await runAiTask("overall_redaction", caseRecord.id, rawPayload, availableEvidenceIds, knownIdentifierValues);
 
   if (result.kind === "unavailable") {
     return { sections: caseRecord.sections, appliedKeys: [], rejectedKeys: [], aiUnavailable: true, message: result.message };
@@ -78,7 +80,14 @@ export async function applyOverallRedaction(caseRecord: CaseRecord): Promise<Ove
     // Erneute Faktenpruefung nach der sprachlichen Ueberarbeitung (Version 0.2,
     // PH-15 Abschnitt 42: "Nach Kuerzung erneute Evidenzpruefung" - gilt analog fuer
     // jede nachtraegliche sprachliche Veraenderung durch Claude).
-    const coverage = await runSemanticFactCheck(caseRecord.id, section.key, redactedText, caseRecord.evidence, [section.text]);
+    const coverage = await runSemanticFactCheck(
+      caseRecord.id,
+      section.key,
+      redactedText,
+      caseRecord.evidence,
+      [section.text],
+      knownIdentifierValues
+    );
     if (coverage.status === "unsupported") {
       rejectedKeys.push(section.key);
       nextSections.push(section);

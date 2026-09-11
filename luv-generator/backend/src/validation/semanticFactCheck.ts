@@ -36,11 +36,12 @@ export async function runSemanticFactCheck(
   sectionKey: string,
   text: string,
   availableEvidence: EvidenceItem[],
-  fallbackSourceNotes: string[]
+  fallbackSourceNotes: string[],
+  knownIdentifierValues: string[] = []
 ): Promise<FactCheckResult> {
   const availableIds = availableEvidence.map((e) => e.id);
   const payload = factCheckPayload(sectionKey, text, availableEvidence);
-  const result = await runAiTask("fact_check", caseId, payload, availableIds);
+  const result = await runAiTask("fact_check", caseId, payload, availableIds, knownIdentifierValues);
 
   if (result.kind === "ok") {
     let rawClaims: RawClaim[];

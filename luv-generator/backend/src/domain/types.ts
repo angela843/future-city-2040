@@ -77,6 +77,13 @@ export type FoerderzielbereichStatus = "begonnen" | "aktiv" | "abgeschlossen" | 
 export interface FoerderzielbereichTracking {
   bereich: BAFoerderzielbereich;
   status: FoerderzielbereichStatus;
+  /**
+   * Voraussichtlicher Zeitraum der Foerder-/Qualifizierungsplanung fuer diesen Bereich
+   * (Korrekturauftrag V0.2.1, A5; vom BA-Start-LuV vorgesehen). Keine automatische
+   * fachliche Dauer durch Claude - reine strukturierte Dateneingabe.
+   */
+  von: string | null;
+  bis: string | null;
 }
 
 /** Erlaubte Bewertungswerte fuer Kompetenzen (fachlich, erscheinen so im LUV-Text). */
@@ -280,12 +287,21 @@ export interface BaseData {
    */
   kompetenzanalyseEnde: string | null;
   /**
-   * Geplantes Massnahmeende - Grundlage fuer die Fristen der weiteren Verlaufs-LUV
-   * (6 Wochen vorher) und der Abschluss-LUV (PH-15 v1.1 Abschnitt 5).
-   * TODO: fachlich abgleichen - bei vorzeitigem/abweichendem tatsaechlichen Austritt
-   * muss der tatsaechliche letzte Teilnahmetag manuell beruecksichtigt werden.
+   * Geplantes Massnahmeende - reiner Planungswert, Grundlage fuer die Frist der
+   * weiteren Verlaufs-LUV (6 Wochen vorher, PH-15 v1.1 Abschnitt 5). Darf seit dem
+   * Korrekturauftrag V0.2.1 (A2) NICHT mehr ersatzweise als tatsaechlicher letzter
+   * Teilnahmetag fuer die Abschluss-LUV-Frist verwendet werden - siehe
+   * `tatsaechlicherLetzterTeilnahmetag`.
    */
   massnahmeEndeGeplant: string | null;
+  /**
+   * Tatsaechlicher letzter Teilnahmetag / tatsaechliches Austrittsdatum
+   * (Korrekturauftrag V0.2.1, A2). Einzige Grundlage der Abschluss-LUV-Frist -
+   * sowohl bei regulaerem Abschluss als auch bei vorzeitiger Beendigung. Fehlt dieses
+   * Datum bei einer Abschluss-LUV, wird KEINE Abschlussfrist als fachlich verbindlich
+   * ausgegeben (siehe `fristenLogic.ts: computeFristen`).
+   */
+  tatsaechlicherLetzterTeilnahmetag: string | null;
   /**
    * Anlass des Verlaufs-LUV (PH-17 V1.0 Abschnitt 4/6), nur bei luvArt="verlauf"
    * relevant. Steuert, welche Fristformel gilt.
@@ -375,30 +391,56 @@ export type Uebermittlungsanlass = (typeof UEBERMITTLUNGSANLASS_VALUES)[number];
 export const VORZEITIGE_BEENDIGUNG_ART_VALUES = ["uebergang_ausbildung_arbeit", "abbruch"] as const;
 export type VorzeitigeBeendigungArt = (typeof VORZEITIGE_BEENDIGUNG_ART_VALUES)[number];
 
-export interface AbschlussErgebnis {
-  /** Feld 1: Abschluss-LUV vom. */
-  abschlussLuvVom: string | null;
-  /** Feld 3. */
-  uebermittlungsanlass: Uebermittlungsanlass | null;
-  /** Nur bei uebermittlungsanlass="vorzeitige_beendigung". */
-  vorzeitigeBeendigungArt: VorzeitigeBeendigungArt | null;
-
-  /**
-   * Felder 4-6, 8-12: direkte Identifikatoren. Rein lokale Erfassung fuer
-   * Pruefansicht/DOCX-Export - werden NIEMALS Teil eines Claude-Payloads
-   * (Privacy Gateway Allowlist enthaelt diese Schluessel bewusst nicht).
-   */
+/**
+ * Gemeinsamer Stammdatenkern fuer START, VERLAUF und ABSCHLUSS (Korrekturauftrag
+ * V0.2.1, A4), soweit die offiziellen Felder gemeinsam sind: LuV-Datum sowie die
+ * direkten Identifikatoren (Vorname, Nachname, Kundennummer, Traeger/Einrichtung,
+ * Ansprechperson, Telefon, E-Mail) und das BvB-3-Sonderfeld Lernort Wohnen/Internat.
+ * Ersetzt die vormals nur im Abschluss-Modul gefuehrten, isolierten Kopien dieser
+ * Felder ("keine doppelten konkurrierenden Stammdatenmodelle"). Rein lokale Erfassung
+ * fuer Pruefansicht/DOCX-Export - werden NIEMALS Teil eines Claude-Payloads (Privacy
+ * Gateway Allowlist enthaelt diese Schluessel bewusst nicht).
+ */
+export interface Stammdaten {
+  /** Datum dieser LuV (Start-, Verlaufs- oder Abschluss-LuV). */
+  luvDatum: string | null;
   vorname: string;
   nachname: string;
   kundennummer: string;
-  /** Feld 7: nur bei massnahmeart="bvb3" erfasst/angezeigt. */
-  lernortWohnenInternat: JaNein | null;
   traegerEinrichtung: string;
   ansprechpersonVorname: string;
   ansprechpersonNachname: string;
   telefon: string;
   email: string;
+  /** Nur bei massnahmeart="bvb3" erfasst/angezeigt/exportiert. */
+  lernortWohnenInternat: JaNein | null;
+}
 
+export function emptyStammdaten(): Stammdaten {
+  return {
+    luvDatum: null,
+    vorname: "",
+    nachname: "",
+    kundennummer: "",
+    traegerEinrichtung: "",
+    ansprechpersonVorname: "",
+    ansprechpersonNachname: "",
+    telefon: "",
+    email: "",
+    lernortWohnenInternat: null
+  };
+}
+
+/**
+ * Abschluss-spezifische Ergebnisfelder (offizieller BA-Abschluss-LuV 10/2025). Die
+ * direkten Identifikatoren und das LuV-Datum sind seit Korrekturauftrag V0.2.1 (A4)
+ * Teil des gemeinsamen `Stammdaten`-Kerns und hier NICHT mehr dupliziert.
+ */
+export interface AbschlussErgebnis {
+  /** Feld 3. */
+  uebermittlungsanlass: Uebermittlungsanlass | null;
+  /** Nur bei uebermittlungsanlass="vorzeitige_beendigung". */
+  vorzeitigeBeendigungArt: VorzeitigeBeendigungArt | null;
   /** Feld 13. */
   hauptschulabschlussErreicht: JaNeinNichtRelevant | null;
   /** Feld 14: HUMAN_CONFIRMED, Claude leitet dies nie selbst ab. */
@@ -422,18 +464,8 @@ export interface AbschlussErgebnis {
 /** Leerer Ausgangszustand bei Fallanlage - keine HUMAN_CONFIRMED-Entscheidung ist vorbelegt. */
 export function emptyAbschlussErgebnis(): AbschlussErgebnis {
   return {
-    abschlussLuvVom: null,
     uebermittlungsanlass: null,
     vorzeitigeBeendigungArt: null,
-    vorname: "",
-    nachname: "",
-    kundennummer: "",
-    lernortWohnenInternat: null,
-    traegerEinrichtung: "",
-    ansprechpersonVorname: "",
-    ansprechpersonNachname: "",
-    telefon: "",
-    email: "",
     hauptschulabschlussErreicht: null,
     ausbildungsreifeErreicht: { value: null, humanConfirmed: false },
     berufseignung: { value: "", humanConfirmed: false },
@@ -583,6 +615,11 @@ export interface CaseRecord {
    */
   foerderzielbereichTracking: FoerderzielbereichTracking[];
   teilnehmerbesprechung: Teilnehmerbesprechung;
+  /**
+   * Gemeinsamer Stammdatenkern fuer START/VERLAUF/ABSCHLUSS (Korrekturauftrag V0.2.1,
+   * A4). Direkte Identifikatoren - rein lokal, nie Teil eines Claude-Payloads.
+   */
+  stammdaten: Stammdaten;
   /** Abschluss-Modul (PH-17 V1.0, Migrationsplan Entscheidung 9). Nur bei luvArt="abschluss" fachlich relevant. */
   abschlussErgebnis: AbschlussErgebnis;
   /** Muss durch aktive Bestaetigung der Koordination gesetzt werden. Claude darf dies nie setzen. */

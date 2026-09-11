@@ -50,6 +50,9 @@ describe("PH-15 v1.1 - neue Testfaelle (Arbeitsfassung 1.1)", () => {
       eintrittsdatum: "2026-01-01",
       kompetenzanalyseEnde: "2026-02-01",
       massnahmeEndeGeplant: "2026-12-01",
+      // Korrekturauftrag V0.2.1 (A2): die Abschluss-LUV-Frist kommt ausschliesslich aus
+      // dem tatsaechlichen letzten Teilnahmetag, NIE aus dem geplanten Massnahmeende.
+      tatsaechlicherLetzterTeilnahmetag: "2026-12-05",
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -64,7 +67,11 @@ describe("PH-15 v1.1 - neue Testfaelle (Arbeitsfassung 1.1)", () => {
     expect(fristen.ersteVerlaufsLuvFaellig).toBe("2026-07-01");
     // Weitere Verlaufs-LUV: 6 Wochen (42 Tage) vor Massnahmeende.
     expect(fristen.weitereVerlaufsLuvFaellig).toBe("2026-10-20");
-    expect(fristen.abschlussLuvFaellig).toBe("2026-12-01");
+    // Abschluss-LUV faellig = tatsaechlicher letzter Teilnahmetag, bewusst abweichend
+    // vom geplanten Massnahmeende (2026-12-01), um zu beweisen, dass dieses NICHT
+    // ersatzweise verwendet wird.
+    expect(fristen.abschlussLuvFaellig).toBe("2026-12-05");
+    expect(fristen.abschlussLuvFaelligHinweis).toBeNull();
   });
 
   it("V02-T12: Kompetenzanalyse-Plausibilität - Hinweis (keine Blockade) nur fuer BvB 1; fuer BvB 2/BvB 3 keine Regel ohne verbindliche Grundlage (Migrationsplan 0.1->0.2 Entscheidung 7)", () => {
@@ -76,6 +83,7 @@ describe("PH-15 v1.1 - neue Testfaelle (Arbeitsfassung 1.1)", () => {
       eintrittsdatum: "2026-01-01",
       kompetenzanalyseEnde: "2026-01-08", // 1 Woche, unter dem Regelfall (3-5 Wochen)
       massnahmeEndeGeplant: null,
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",
@@ -98,6 +106,7 @@ describe("PH-15 v1.1 - neue Testfaelle (Arbeitsfassung 1.1)", () => {
       eintrittsdatum: "2026-01-01",
       kompetenzanalyseEnde: "2026-02-12",
       massnahmeEndeGeplant: null,
+      tatsaechlicherLetzterTeilnahmetag: null,
       verlaufAnlass: null,
       verlaengerungstermin: null,
       massnahmeziel: "berufsausbildung",

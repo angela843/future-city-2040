@@ -65,23 +65,20 @@ const VERLAUF_ORDER: LuvSection["key"][] = [
 ];
 
 /**
- * Abschluss-LUV (Abschnitt 23): Ausgangspunkt -> Entwicklung -> aktueller Stand ->
- * strukturierte Abschlussergebnisse (PH-17 V1.0, 22-Felder-Struktur) -> Perspektive.
+ * Abschluss-LUV (Korrekturauftrag V0.2.1, A1): der BA-Abschluss-LuV 10/2025 hat eine
+ * eigenstaendige Struktur und wird NICHT mit Start-/Verlaufsabschnitten kombiniert.
+ * Fuer LUV_ART=ABSCHLUSS wird ausschliesslich die Abschlussstruktur gerendert - keine
+ * Ausgangslage, Entwicklung, schulischen/personalen/methodischen/sozial-kommunikativen
+ * Kompetenzabschnitte, keine praktischen/beruflichen Basiskompetenzen, kein allgemeiner
+ * Foerderbedarf und keine alte Gesamtbeurteilung/Perspektive aus Start/Verlauf. Die
+ * Abschlussausgabe ist strukturell auf die vorhandenen Abschlussfelder beschraenkt
+ * (Schulabschluss, Ausbildungsreife, Berufseignung, Qualifizierungs-/Ausbildungsbausteine,
+ * Vermittlungsfaehigkeit, Eingliederungsergebnis, Unterstuetzungsbedarf/Empfehlung,
+ * Stabilisierung/Festigung sowie die erforderlichen Stammdaten/Abschlussangaben), alles
+ * bereits vollstaendig in "abschluss_ergebnis" (renderAbschlussErgebnis.ts) abgebildet.
+ * START und VERLAUF sind von dieser Aenderung nicht betroffen.
  */
-const ABSCHLUSS_ORDER: LuvSection["key"][] = [
-  "initial_situation",
-  "development",
-  "school_competences",
-  "personal_competences",
-  "methodical_competences",
-  "social_competences",
-  "practical_competences",
-  "career_orientation",
-  "support_needs",
-  "overall_assessment",
-  "abschluss_ergebnis",
-  "perspective"
-];
+const ABSCHLUSS_ORDER: LuvSection["key"][] = ["abschluss_ergebnis"];
 
 export function sectionOrderForLuvArt(luvArt: LuvArt): LuvSection["key"][] {
   switch (luvArt) {

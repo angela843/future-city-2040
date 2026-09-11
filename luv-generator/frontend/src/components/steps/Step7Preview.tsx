@@ -395,35 +395,26 @@ export function Step7Preview({
         <div className="section-block">
           <h3>Abschluss-Modul (offizieller BA-Abschluss-LuV 10/2025)</h3>
           <p className="muted">
-            Vorname, Nachname, Kundennummer, Träger/Einrichtung, Ansprechperson, Telefon und E-Mail sind direkte
-            Identifikatoren und verbleiben ausschließlich lokal - sie werden niemals an Claude übermittelt.
+            LuV-Datum, Vorname, Nachname, Kundennummer, Träger/Einrichtung, Ansprechperson, Telefon, E-Mail und das
+            BvB-3-Sonderfeld Lernort Wohnen/Internat sind Teil des gemeinsamen Stammdatenkerns (Schritt 1 –
+            Grunddaten) und verbleiben dort ausschließlich lokal - sie werden niemals an Claude übermittelt.
           </p>
 
-          <div className="grid-2">
-            <div className="field">
-              <label>Abschluss-LuV vom</label>
-              <input
-                type="date"
-                value={abForm.abschlussLuvVom ?? ""}
-                onChange={(e) => saveAbschlussErgebnis({ ...abForm, abschlussLuvVom: e.target.value || null })}
-              />
-            </div>
-            <div className="field">
-              <label>Übermittlungsanlass</label>
-              <select
-                value={abForm.uebermittlungsanlass ?? ""}
-                onChange={(e) =>
-                  saveAbschlussErgebnis({ ...abForm, uebermittlungsanlass: (e.target.value || null) as Uebermittlungsanlass | null })
-                }
-              >
-                <option value="">(nicht gesetzt)</option>
-                {UEBERMITTLUNGSANLASS_VALUES.map((v) => (
-                  <option key={v} value={v}>
-                    {UEBERMITTLUNGSANLASS_LABELS[v]}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="field">
+            <label>Übermittlungsanlass</label>
+            <select
+              value={abForm.uebermittlungsanlass ?? ""}
+              onChange={(e) =>
+                saveAbschlussErgebnis({ ...abForm, uebermittlungsanlass: (e.target.value || null) as Uebermittlungsanlass | null })
+              }
+            >
+              <option value="">(nicht gesetzt)</option>
+              {UEBERMITTLUNGSANLASS_VALUES.map((v) => (
+                <option key={v} value={v}>
+                  {UEBERMITTLUNGSANLASS_LABELS[v]}
+                </option>
+              ))}
+            </select>
           </div>
 
           {abForm.uebermittlungsanlass === "vorzeitige_beendigung" && (
@@ -441,69 +432,6 @@ export function Step7Preview({
                     {VORZEITIGE_BEENDIGUNG_ART_LABELS[v]}
                   </option>
                 ))}
-              </select>
-            </div>
-          )}
-
-          <div className="grid-2">
-            <div className="field">
-              <label>Vorname (nur lokal)</label>
-              <input value={abForm.vorname} onChange={(e) => setAbForm({ ...abForm, vorname: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
-            </div>
-            <div className="field">
-              <label>Nachname (nur lokal)</label>
-              <input value={abForm.nachname} onChange={(e) => setAbForm({ ...abForm, nachname: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
-            </div>
-          </div>
-          <div className="grid-2">
-            <div className="field">
-              <label>Kundennummer (nur lokal)</label>
-              <input value={abForm.kundennummer} onChange={(e) => setAbForm({ ...abForm, kundennummer: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
-            </div>
-            <div className="field">
-              <label>Träger/Einrichtung (nur lokal)</label>
-              <input value={abForm.traegerEinrichtung} onChange={(e) => setAbForm({ ...abForm, traegerEinrichtung: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
-            </div>
-          </div>
-          <div className="grid-2">
-            <div className="field">
-              <label>Ansprechperson – Vorname (nur lokal)</label>
-              <input
-                value={abForm.ansprechpersonVorname}
-                onChange={(e) => setAbForm({ ...abForm, ansprechpersonVorname: e.target.value })}
-                onBlur={() => saveAbschlussErgebnis(abForm)}
-              />
-            </div>
-            <div className="field">
-              <label>Ansprechperson – Nachname (nur lokal)</label>
-              <input
-                value={abForm.ansprechpersonNachname}
-                onChange={(e) => setAbForm({ ...abForm, ansprechpersonNachname: e.target.value })}
-                onBlur={() => saveAbschlussErgebnis(abForm)}
-              />
-            </div>
-          </div>
-          <div className="grid-2">
-            <div className="field">
-              <label>Telefon (nur lokal)</label>
-              <input value={abForm.telefon} onChange={(e) => setAbForm({ ...abForm, telefon: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
-            </div>
-            <div className="field">
-              <label>E-Mail (nur lokal)</label>
-              <input value={abForm.email} onChange={(e) => setAbForm({ ...abForm, email: e.target.value })} onBlur={() => saveAbschlussErgebnis(abForm)} />
-            </div>
-          </div>
-
-          {record.baseData.massnahmeart === "bvb3" && (
-            <div className="field">
-              <label>Lernort Wohnen/Internat (BvB-3-Sonderfeld)</label>
-              <select
-                value={abForm.lernortWohnenInternat ?? ""}
-                onChange={(e) => saveAbschlussErgebnis({ ...abForm, lernortWohnenInternat: (e.target.value || null) as JaNein | null })}
-              >
-                <option value="">(nicht gesetzt)</option>
-                <option value="ja">{JA_NEIN_LABELS.ja}</option>
-                <option value="nein">{JA_NEIN_LABELS.nein}</option>
               </select>
             </div>
           )}
